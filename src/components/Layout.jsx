@@ -85,7 +85,7 @@ export default function Layout() {
   const isMoreActive = MORE_ITEMS.some(i => i.path === location.pathname);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="bg-background flex flex-col" style={{ minHeight: "100dvh" }}>
       <OnboardingWizard />
       <XPPopup />
       <LevelUpOverlay />
@@ -184,7 +184,7 @@ export default function Layout() {
 
       {/* Bottom Navigation Bar */}
       <nav
-        className="bottom-nav-bar flex items-center justify-around px-4 pt-2 backdrop-blur-xl"
+        className="bottom-nav-bar flex items-center justify-around backdrop-blur-xl"
         style={{
           background: "rgba(10,10,15,0.92)",
           borderTop: `1px solid ${memberColor.hex}40`,
