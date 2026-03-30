@@ -1,0 +1,69 @@
+{
+  "name": "BudgetTransaction",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "category": {
+      "type": "string",
+      "title": "Category",
+      "enum": [
+        "groceries",
+        "gas",
+        "fun",
+        "dining",
+        "utilities",
+        "clothing",
+        "education",
+        "other"
+      ]
+    },
+    "member_id": {
+      "type": "string",
+      "title": "Member ID"
+    },
+    "member_name": {
+      "type": "string",
+      "title": "Member Name"
+    },
+    "date": {
+      "type": "string",
+      "title": "Date"
+    },
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "enum": [
+        "expense",
+        "allowance_add",
+        "allowance_request"
+      ],
+      "default": "expense"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "approved",
+        "pending",
+        "denied"
+      ],
+      "default": "approved"
+    }
+  },
+  "required": [
+    "description",
+    "amount",
+    "category"
+  ]
+}

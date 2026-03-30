@@ -1,0 +1,42 @@
+{
+  "name": "ActivityLog",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "message": {
+      "type": "string",
+      "title": "Message"
+    },
+    "member_id": {
+      "type": "string",
+      "title": "Member ID"
+    },
+    "member_name": {
+      "type": "string",
+      "title": "Member Name"
+    },
+    "member_color": {
+      "type": "string",
+      "title": "Member Color"
+    },
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "enum": [
+        "chore",
+        "event",
+        "goal",
+        "meal",
+        "notice",
+        "budget"
+      ]
+    }
+  },
+  "required": [
+    "message",
+    "member_name"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "PhotoComment",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "photo_id": {
+      "type": "string",
+      "title": "Photo ID"
+    },
+    "text": {
+      "type": "string",
+      "title": "Comment Text"
+    },
+    "member_id": {
+      "type": "string",
+      "title": "Member ID"
+    },
+    "member_name": {
+      "type": "string",
+      "title": "Member Name"
+    },
+    "member_color": {
+      "type": "string",
+      "title": "Member Color"
+    },
+    "member_emoji": {
+      "type": "string",
+      "title": "Member Emoji"
+    }
+  },
+  "required": [
+    "photo_id",
+    "text",
+    "member_name",
+    "family_code"
+  ]
+}

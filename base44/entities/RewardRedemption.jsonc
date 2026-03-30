@@ -1,0 +1,55 @@
+{
+  "name": "RewardRedemption",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "reward_id": {
+      "type": "string",
+      "title": "Reward ID"
+    },
+    "reward_title": {
+      "type": "string",
+      "title": "Reward Title"
+    },
+    "reward_emoji": {
+      "type": "string",
+      "title": "Reward Emoji"
+    },
+    "xp_cost": {
+      "type": "number",
+      "title": "XP Cost"
+    },
+    "member_id": {
+      "type": "string",
+      "title": "Redeeming Member ID"
+    },
+    "member_name": {
+      "type": "string",
+      "title": "Redeeming Member Name"
+    },
+    "member_color": {
+      "type": "string",
+      "title": "Member Color"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "approved",
+        "denied"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "reward_id",
+    "reward_title",
+    "member_id",
+    "member_name",
+    "xp_cost"
+  ]
+}

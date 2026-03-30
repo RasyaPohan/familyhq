@@ -1,0 +1,68 @@
+{
+  "name": "Chore",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Emoji"
+    },
+    "assigned_to": {
+      "type": "string",
+      "title": "Assigned Member ID"
+    },
+    "assigned_name": {
+      "type": "string",
+      "title": "Assigned Name"
+    },
+    "assigned_color": {
+      "type": "string",
+      "title": "Assigned Color"
+    },
+    "due_date": {
+      "type": "string",
+      "title": "Due Date"
+    },
+    "points": {
+      "type": "number",
+      "title": "XP Points",
+      "default": 10
+    },
+    "completed": {
+      "type": "boolean",
+      "title": "Completed",
+      "default": false
+    },
+    "completed_date": {
+      "type": "string",
+      "title": "Completed Date"
+    },
+    "priority": {
+      "type": "number",
+      "title": "Priority Order",
+      "default": 0
+    },
+    "recurring": {
+      "type": "string",
+      "title": "Recurring",
+      "enum": [
+        "none",
+        "daily",
+        "weekly"
+      ],
+      "default": "none"
+    }
+  },
+  "required": [
+    "title",
+    "assigned_to",
+    "points"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "CalendarEvent",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Emoji Label"
+    },
+    "date": {
+      "type": "string",
+      "title": "Date"
+    },
+    "time": {
+      "type": "string",
+      "title": "Time"
+    },
+    "stored_tz": {
+      "type": "string",
+      "title": "Stored Timezone",
+      "enum": [
+        "PDT",
+        "WIB"
+      ]
+    },
+    "end_time": {
+      "type": "string",
+      "title": "End Time"
+    },
+    "member_id": {
+      "type": "string",
+      "title": "Family Member ID"
+    },
+    "member_name": {
+      "type": "string",
+      "title": "Member Name"
+    },
+    "member_color": {
+      "type": "string",
+      "title": "Member Color"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "is_big_event": {
+      "type": "boolean",
+      "title": "Big Event (Countdown)",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "FamilyMember",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "name": {
+      "type": "string",
+      "title": "Name"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Avatar Emoji"
+    },
+    "avatar_url": {
+      "type": "string",
+      "title": "Avatar Photo URL"
+    },
+    "color": {
+      "type": "string",
+      "title": "Theme Color",
+      "enum": [
+        "purple",
+        "pink",
+        "blue",
+        "green",
+        "orange"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "title": "Role",
+      "enum": [
+        "Parent",
+        "Teen",
+        "Kid"
+      ]
+    },
+    "xp": {
+      "type": "number",
+      "title": "Experience Points",
+      "default": 0
+    },
+    "level": {
+      "type": "number",
+      "title": "Level",
+      "default": 1
+    },
+    "streak": {
+      "type": "number",
+      "title": "Current Streak",
+      "default": 0
+    },
+    "last_chore_date": {
+      "type": "string",
+      "title": "Last Chore Completion Date"
+    },
+    "allowance_balance": {
+      "type": "number",
+      "title": "Allowance Balance",
+      "default": 0
+    },
+    "weekly_xp": {
+      "type": "number",
+      "title": "This Week XP",
+      "default": 0
+    },
+    "week_start": {
+      "type": "string",
+      "title": "Week Start Date (Monday ISO)"
+    }
+  },
+  "required": [
+    "name",
+    "color",
+    "role"
+  ]
+}

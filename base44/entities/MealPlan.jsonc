@@ -1,0 +1,74 @@
+{
+  "name": "MealPlan",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "day": {
+      "type": "string",
+      "title": "Day",
+      "enum": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    },
+    "meal_type": {
+      "type": "string",
+      "title": "Meal Type",
+      "enum": [
+        "Breakfast",
+        "Lunch",
+        "Dinner"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "title": "Meal Title"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Emoji"
+    },
+    "recipe": {
+      "type": "string",
+      "title": "Recipe / Notes"
+    },
+    "ingredients": {
+      "type": "string",
+      "title": "Ingredients (comma separated)"
+    },
+    "votes_up": {
+      "type": "number",
+      "title": "Thumbs Up",
+      "default": 0
+    },
+    "votes_down": {
+      "type": "number",
+      "title": "Thumbs Down",
+      "default": 0
+    },
+    "voted_by": {
+      "type": "array",
+      "title": "Voted By",
+      "items": {
+        "type": "string"
+      }
+    },
+    "week_of": {
+      "type": "string",
+      "title": "Week Of (date)"
+    }
+  },
+  "required": [
+    "day",
+    "meal_type",
+    "title"
+  ]
+}

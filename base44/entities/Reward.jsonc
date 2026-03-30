@@ -1,0 +1,43 @@
+{
+  "name": "Reward",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "title": {
+      "type": "string",
+      "title": "Reward Title"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Emoji"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "xp_cost": {
+      "type": "number",
+      "title": "XP Cost"
+    },
+    "created_by_id": {
+      "type": "string",
+      "title": "Created By Member ID"
+    },
+    "created_by_name": {
+      "type": "string",
+      "title": "Created By Name"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    }
+  },
+  "required": [
+    "title",
+    "xp_cost"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "name": "FamilyPhoto",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "photo_url": {
+      "type": "string",
+      "title": "Photo URL"
+    },
+    "caption": {
+      "type": "string",
+      "title": "Caption"
+    },
+    "emoji_tag": {
+      "type": "string",
+      "title": "Emoji Tag"
+    },
+    "member_id": {
+      "type": "string",
+      "title": "Posted By Member ID"
+    },
+    "member_name": {
+      "type": "string",
+      "title": "Posted By Name"
+    },
+    "member_color": {
+      "type": "string",
+      "title": "Member Color"
+    },
+    "member_emoji": {
+      "type": "string",
+      "title": "Member Emoji"
+    },
+    "reactions": {
+      "type": "object",
+      "title": "Reactions",
+      "properties": {
+        "heart": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "laugh": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "fire": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "clap": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "love": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
+    },
+    "comment_count": {
+      "type": "number",
+      "title": "Comment Count",
+      "default": 0
+    }
+  },
+  "required": [
+    "photo_url",
+    "member_name",
+    "family_code"
+  ]
+}

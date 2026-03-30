@@ -1,0 +1,69 @@
+{
+  "name": "Notice",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "content": {
+      "type": "string",
+      "title": "Content"
+    },
+    "author_id": {
+      "type": "string",
+      "title": "Author Member ID"
+    },
+    "author_name": {
+      "type": "string",
+      "title": "Author Name"
+    },
+    "author_color": {
+      "type": "string",
+      "title": "Author Color"
+    },
+    "color": {
+      "type": "string",
+      "title": "Note Color",
+      "enum": [
+        "yellow",
+        "pink",
+        "blue",
+        "green",
+        "purple"
+      ]
+    },
+    "pinned": {
+      "type": "boolean",
+      "title": "Pinned",
+      "default": false
+    },
+    "urgent": {
+      "type": "boolean",
+      "title": "Urgent",
+      "default": false
+    },
+    "reactions": {
+      "type": "object",
+      "title": "Reactions",
+      "properties": {
+        "heart": {
+          "type": "number",
+          "default": 0
+        },
+        "laugh": {
+          "type": "number",
+          "default": 0
+        },
+        "thumbs_up": {
+          "type": "number",
+          "default": 0
+        }
+      }
+    }
+  },
+  "required": [
+    "content",
+    "author_name"
+  ]
+}

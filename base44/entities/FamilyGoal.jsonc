@@ -1,0 +1,53 @@
+{
+  "name": "FamilyGoal",
+  "type": "object",
+  "properties": {
+    "family_code": {
+      "type": "string",
+      "title": "Family Code"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Emoji"
+    },
+    "target_amount": {
+      "type": "number",
+      "title": "Target Amount"
+    },
+    "current_amount": {
+      "type": "number",
+      "title": "Current Amount",
+      "default": 0
+    },
+    "deadline": {
+      "type": "string",
+      "title": "Deadline"
+    },
+    "is_shared": {
+      "type": "boolean",
+      "title": "Shared Goal",
+      "default": true
+    },
+    "owner_id": {
+      "type": "string",
+      "title": "Owner Member ID"
+    },
+    "owner_name": {
+      "type": "string",
+      "title": "Owner Name"
+    },
+    "completed": {
+      "type": "boolean",
+      "title": "Completed",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "target_amount"
+  ]
+}
