@@ -120,8 +120,11 @@ export default function OnboardingWizard() {
     return (
       <>
         <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm" />
-        <div className="fixed left-0 right-0 z-[210] md:left-1/2 md:-translate-x-1/2 md:w-[420px] md:bottom-8" style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-t-3xl md:rounded-3xl shadow-2xl p-6 pb-10 md:pb-6">
+        <div
+          className="fixed z-[210] md:left-1/2 md:-translate-x-1/2 md:w-[420px]"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)", left: "12px", right: "12px" }}
+        >
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl shadow-2xl p-6">
             <p className="text-4xl mb-3 text-center">📖</p>
             <p className="font-heading font-bold text-white text-lg text-center mb-1">Want a quick guide?</p>
             <p className="text-white/50 text-sm text-center mb-5">Learn how XP, levels, streaks and rewards work.</p>
@@ -165,10 +168,10 @@ export default function OnboardingWizard() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 22, stiffness: 300 }}
-          className="fixed right-0 z-[150] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:bottom-6"
-          style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
+          className="fixed z-[150] md:left-1/2 md:-translate-x-1/2 md:w-[480px]"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)", left: "12px", right: "12px" }}
         >
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-t-3xl md:rounded-3xl shadow-2xl p-5 pb-8 md:pb-5">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl shadow-2xl p-5">
             {/* Step counter + skip */}
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-white/40 font-medium">Step {state.step + 1} of {steps.length}</span>

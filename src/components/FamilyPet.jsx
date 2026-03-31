@@ -22,11 +22,15 @@ function getStage(totalXp) {
 }
 
 // ─── Corner positions ──────────────────────────────────────────────────────────
-const CORNERS = [
-  { bottom: 24, right: 24, left: "auto" },
-  { bottom: 24, right: "auto", left: 24 },
-  { bottom: "auto", top: 80, right: 24, left: "auto" },
+// All corners use CSS calc so the pet sits just above the safe area inset.
+// The string values are passed directly as the `animate` target for the motion.div.
+const CORNER_STYLES = [
+  { bottom: 16, right: 16, left: "auto", top: "auto" },
+  { bottom: 16, right: "auto", left: 80, top: "auto" },  // left side — clear of + button
+  { bottom: "auto", top: 80, right: 16, left: "auto" },  // top right
 ];
+// Keep legacy alias so nothing else breaks
+const CORNERS = CORNER_STYLES;
 
 // ─── Idle speech messages ──────────────────────────────────────────────────────
 const IDLE_MESSAGES = [
@@ -508,12 +512,12 @@ export default function FamilyPet() {
         )}
       </AnimatePresence>
 
-      {/* The pet widget */}
+      {/* The pet widget — fixed to bottom-right, safe-area aware */}
       <motion.div
         animate={pos}
         transition={{ type: "spring", stiffness: 80, damping: 18 }}
         className="fixed z-[9700]"
-        style={{ position: "fixed" }}
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="relative select-none">
           {/* Speech bubble */}

@@ -88,7 +88,7 @@ export default function Dashboard() {
       </div>
 
       {/* Floating Quick Add Button */}
-      <div className="fixed right-6 z-40" style={{ bottom: "calc(2rem + env(safe-area-inset-bottom))" }}>
+      <div className="fixed left-6 z-40" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
         <AnimatePresence>
           {showQuick && (
             <motion.div
