@@ -125,6 +125,53 @@ const sections = (showTz) => [
         },
       ]
     : []),
+  {
+    emoji: "🐱",
+    title: "Your Family Pet",
+    content: (
+      <div className="space-y-3">
+        <p className="text-white/70 text-sm leading-relaxed">
+          Your family has a shared pet that lives in the corner of the app. It grows as your family earns XP together. <strong className="text-white">Tap</strong> it for messages, <strong className="text-white">long press</strong> to see its XP progress, <strong className="text-white">double tap</strong> to make it spin.
+        </p>
+        <div className="space-y-2 mt-2">
+          {[
+            { emoji: "🥚", stage: "Egg",       range: "0 – 200 XP",    desc: "Just hatching..."          },
+            { emoji: "🐱", stage: "Kitten",     range: "200 – 500 XP",  desc: "Getting livelier!"         },
+            { emoji: "🐈", stage: "Cat",        range: "500 – 1000 XP", desc: "Fully grown!"              },
+            { emoji: "😸", stage: "Happy Cat",  range: "1000 – 2000 XP",desc: "Accessorized and happy!"   },
+            { emoji: "👑", stage: "Legend Cat", range: "2000+ XP",      desc: "Crowned and glowing!"      },
+          ].map((s) => (
+            <div key={s.stage} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
+              <span className="text-2xl shrink-0">{s.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white">{s.stage}</p>
+                <p className="text-xs text-white/50">{s.desc}</p>
+              </div>
+              <span className="text-xs font-heading font-bold text-violet-400 shrink-0">{s.range}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    emoji: "📸",
+    title: "Moments",
+    content: (
+      <p className="text-white/70 leading-relaxed text-sm">
+        Post photos for the whole family to see. React with emojis, leave comments, and build your family memory wall together. Head to <strong className="text-white">Moments</strong> in the sidebar to get started.
+      </p>
+    ),
+  },
+  {
+    emoji: "✈️",
+    title: "Travel Mode",
+    content: (
+      <p className="text-white/70 leading-relaxed text-sm">
+        If a family member is abroad, they can set their timezone in <strong className="text-white">profile settings</strong> (tap your avatar → Edit Profile). The app automatically converts all event times to their timezone and shows a <strong className="text-white">dual clock</strong> on the dashboard so everyone always knows what time it is for each other.
+      </p>
+    ),
+  },
 ];
 
 function Section({ section, index }) {
