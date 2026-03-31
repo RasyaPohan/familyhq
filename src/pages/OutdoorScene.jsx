@@ -92,6 +92,45 @@ export default function OutdoorScene() {
         </div>
       </div>
 
+      {/* ── Welcome text ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          position: "absolute",
+          top: "7%",
+          left: 0,
+          right: 0,
+          zIndex: 5,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          pointerEvents: "none",
+          gap: 4,
+        }}
+      >
+        <span style={{
+          fontSize: 14,
+          fontWeight: 400,
+          color: "rgba(196,181,253,0.7)",
+          fontFamily: "system-ui, sans-serif",
+          letterSpacing: "0.06em",
+        }}>
+          Welcome to
+        </span>
+        <span style={{
+          fontSize: 28,
+          fontWeight: 700,
+          color: "rgba(255,255,255,0.96)",
+          fontFamily: "system-ui, sans-serif",
+          letterSpacing: "-0.01em",
+          textShadow: "0 0 24px rgba(167,139,250,0.55), 0 0 48px rgba(139,92,246,0.3), 0 2px 8px rgba(0,0,0,0.6)",
+        }}>
+          The {familyName}'s HQ
+        </span>
+      </motion.div>
+
       {/* ── Main zoom container ── */}
       <motion.div
         style={{ position: "absolute", inset: 0, transformOrigin: "50% 46%" }}
