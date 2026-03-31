@@ -562,39 +562,6 @@ export default function FamilyPet() {
         )}
       </AnimatePresence>
 
-      {/* ── Speech bubble modal ── */}
-      <AnimatePresence>
-        {bubble && (
-          <PetCenteredModal onClose={() => setBubble(null)}>
-            <motion.div
-              key="bubble-modal"
-              initial={{ opacity: 0, scale: 0.88, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.88, y: 20 }}
-              transition={{ type: "spring", stiffness: 360, damping: 28 }}
-              style={{ width: "85vw", maxWidth: "300px" }}
-              onClick={e => e.stopPropagation()}
-            >
-              <PetModal onClose={() => setBubble(null)}>
-                <div className="flex justify-center mb-3">
-                  {stage.id === "egg"       && <EggPet size={48} />}
-                  {stage.id === "kitten"    && <KittenPet size={48} />}
-                  {stage.id === "cat"       && <CatPet size={48} />}
-                  {stage.id === "happy_cat" && <HappyCatPet size={48} />}
-                  {stage.id === "legend"    && <LegendCatPet size={48} />}
-                </div>
-                <p
-                  className="text-center whitespace-pre-wrap"
-                  style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", lineHeight: "1.5" }}
-                >
-                  {bubble.text}
-                </p>
-              </PetModal>
-            </motion.div>
-          </PetCenteredModal>
-        )}
-      </AnimatePresence>
-
       {/* The pet widget — fixed position, safe-area aware */}
       <motion.div
         animate={pos}
@@ -603,6 +570,79 @@ export default function FamilyPet() {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="relative select-none">
+
+          {/* Speech bubble — anchored above pet, opens leftward so it stays on screen */}
+          <AnimatePresence>
+            {bubble && (
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.92 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                style={{
+                  position: "absolute",
+                  bottom: "calc(100% + 12px)",
+                  right: 0,
+                  width: "200px",
+                  zIndex: 10,
+                }}
+              >
+                <div
+                  style={{
+                    background: "#1a1a2e",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: "14px",
+                    padding: "10px 14px",
+                    position: "relative",
+                  }}
+                >
+                  {/* Close button */}
+                  <button
+                    onClick={() => setBubble(null)}
+                    style={{
+                      position: "absolute",
+                      top: "6px",
+                      right: "8px",
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      background: "rgba(255,255,255,0.1)",
+                      border: "none",
+                      color: "rgba(255,255,255,0.5)",
+                      fontSize: "13px",
+                      lineHeight: "1",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >×</button>
+                  {/* Message */}
+                  <p
+                    style={{
+                      color: "rgba(255,255,255,0.92)",
+                      fontSize: "14px",
+                      lineHeight: "1.45",
+                      margin: 0,
+                      paddingRight: "18px",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >{bubble.text}</p>
+                </div>
+                {/* Triangle pointer */}
+                <div style={{
+                  position: "absolute",
+                  bottom: "-7px",
+                  right: "22px",
+                  width: 0,
+                  height: 0,
+                  borderLeft: "7px solid transparent",
+                  borderRight: "7px solid transparent",
+                  borderTop: "7px solid #1a1a2e",
+                }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Sleeping Zzz */}
           {petState === "sleeping" && <SleepingZzz />}
