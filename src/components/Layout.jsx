@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import XPPopup from "@/components/XPPopup";
 import LevelUpOverlay from "@/components/LevelUpOverlay";
+import FamilyPet from "@/components/FamilyPet";
 import { Sun, Moon, Home, Calendar, CheckSquare, Camera, Utensils, DollarSign, Pin, Target, Gift, HelpCircle, LogOut, DoorOpen, Menu } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_COLORS, clearFamilySession } from "@/lib/familyStore";
@@ -114,6 +115,7 @@ export default function Layout() {
       <OnboardingWizard />
       <XPPopup />
       <LevelUpOverlay />
+      <FamilyPet />
 
       {/* Top Bar */}
       <header className="sticky top-0 z-20 bg-card/90 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center shrink-0">
