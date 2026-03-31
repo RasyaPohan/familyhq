@@ -116,7 +116,7 @@ function FrontView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
     { id:"living", x1:-1,y1:-2,x2: 1,y2:0  },
     { id:"dad",    x1: 1,y1:-2,x2: 3,y2:0  },
     { id:"mom",    x1:-3,y1: 0,x2:-1,y2:2  },
-    { id:"hallway",x1:-1,y1: 0,x2: 1,y2:2  },
+    { id:"rania",  x1:-1,y1: 0,x2: 1,y2:2  },
     { id:"radif",  x1: 1,y1: 0,x2: 3,y2:2  },
   ];
 
@@ -140,7 +140,7 @@ function FrontView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
 
       {/* Room tiles */}
       {rooms.map(r => {
-        const m = r.id !== "hallway" ? getMember(r.id, members) : null;
+        const m = getMember(r.id, members);
         const col = m ? (MEMBER_COLORS[m.color]?.hex || DEFAULT_COLORS[r.id]) : DEFAULT_COLORS[r.id] || "#1e293b";
         const isHov = hov === r.id;
         const mx = (r.x1+r.x2)/2, my = (r.y1+r.y2)/2;
@@ -279,23 +279,6 @@ function FrontView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
         );
       })()}
 
-      {/* Rania loft */}
-      {(() => {
-        const rania = getMember("rania", members);
-        if (!rania) return null;
-        const col = MEMBER_COLORS[rania.color]?.hex || DEFAULT_COLORS.rania;
-        const [lx,ly] = iso(2, 0.5, 2.6);
-        const [wx,wy] = iso(2.1, 0.5, 3.15);
-        return (
-          <g>
-            <rect x={wx-9} y={wy-8} width="18" height="13" rx="2" fill="#090d14" stroke={col} strokeWidth="0.9"/>
-            <rect x={wx-9} y={wy-8} width="18" height="13" rx="2" fill={col} fillOpacity="0.12"/>
-            <text x={lx} y={ly-12} textAnchor="middle" fontSize="9" style={{fontFamily:"system-ui",pointerEvents:"none"}}>{rania.emoji||"🌙"}</text>
-            <text x={lx} y={ly-2} textAnchor="middle" fontSize="5" fontWeight="700" fill={col}
-              style={{fontFamily:"system-ui,sans-serif",pointerEvents:"none"}}>{rania.name}</text>
-          </g>
-        );
-      })()}
     </svg>
   );
 }
@@ -327,8 +310,8 @@ function LeftSideView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
     { id:"radif", x1: 1,y1: 0,x2: 3,y2:2 },
   ];
   const centerRooms = [
-    { id:"living",  x1:-1,y1:-2,x2:1,y2:0 },
-    { id:"hallway", x1:-1,y1: 0,x2:1,y2:2 },
+    { id:"living", x1:-1,y1:-2,x2:1,y2:0 },
+    { id:"rania",  x1:-1,y1: 0,x2:1,y2:2 },
   ];
   const allRooms = [...leftRooms, ...centerRooms, ...rightRooms];
 
@@ -346,7 +329,7 @@ function LeftSideView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
       <polygon points={p([[-3,-2],[3,-2],[3,2],[-3,2]])} fill="#0c1520" stroke="#1a2535" strokeWidth="1"/>
 
       {allRooms.map(r => {
-        const m = (r.id!=="hallway") ? getMember(r.id, members) : null;
+        const m = getMember(r.id, members);
         const col = m ? (MEMBER_COLORS[m.color]?.hex||DEFAULT_COLORS[r.id]) : DEFAULT_COLORS[r.id]||"#1e293b";
         const isHov = hov === r.id;
         const mx=(r.x1+r.x2)/2, my=(r.y1+r.y2)/2;
@@ -412,20 +395,6 @@ function LeftSideView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
       <line x1={iso(0,-2,4)[0]} y1={iso(0,-2,4)[1]} x2={iso(0,2,4)[0]} y2={iso(0,2,4)[1]}
         stroke="#6d5ce7" strokeWidth="1.4" opacity="0.8" style={{pointerEvents:"none"}}/>
 
-      {/* Rania loft */}
-      {(() => {
-        const rania = getMember("rania", members);
-        if (!rania) return null;
-        const col = MEMBER_COLORS[rania.color]?.hex || DEFAULT_COLORS.rania;
-        const [lx,ly] = iso(2, 0.5, 2.7);
-        return (
-          <g style={{pointerEvents:"none"}}>
-            <text x={lx} y={ly-10} textAnchor="middle" fontSize="9" style={{fontFamily:"system-ui"}}>{rania.emoji||"🌙"}</text>
-            <text x={lx} y={ly} textAnchor="middle" fontSize="5" fontWeight="700" fill={col}
-              style={{fontFamily:"system-ui,sans-serif"}}>{rania.name}</text>
-          </g>
-        );
-      })()}
     </svg>
   );
 }
@@ -448,9 +417,9 @@ function RightSideView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
     { id:"rasya",  x1:-3,y1:-2,x2:-1,y2:0 },
     { id:"living", x1:-1,y1:-2,x2: 1,y2:0 },
     { id:"dad",    x1: 1,y1:-2,x2: 3,y2:0 },
-    { id:"mom",    x1:-3,y1: 0,x2:-1,y2:2 },
-    { id:"hallway",x1:-1,y1: 0,x2: 1,y2:2 },
-    { id:"radif",  x1: 1,y1: 0,x2: 3,y2:2 },
+    { id:"mom",   x1:-3,y1: 0,x2:-1,y2:2 },
+    { id:"rania", x1:-1,y1: 0,x2: 1,y2:2 },
+    { id:"radif", x1: 1,y1: 0,x2: 3,y2:2 },
   ];
   return (
     <svg viewBox="30 80 340 310" width="100%" height="100%" style={{ display:"block", overflow:"visible" }}>
@@ -465,7 +434,7 @@ function RightSideView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
       <ellipse cx={CX} cy={CY+8} rx="148" ry="14" fill="rgba(0,0,0,0.4)"/>
       <polygon points={p([[-3,-2],[3,-2],[3,2],[-3,2]])} fill="#0c1520" stroke="#1a2535" strokeWidth="1"/>
       {allRooms.map(r => {
-        const m = r.id!=="hallway" ? getMember(r.id,members) : null;
+        const m = getMember(r.id,members);
         const col = m?(MEMBER_COLORS[m.color]?.hex||DEFAULT_COLORS[r.id]):DEFAULT_COLORS[r.id]||"#1e293b";
         const isHov=hov===r.id;
         const [lx,ly]=iso((r.x1+r.x2)/2,(r.y1+r.y2)/2,0.05);
@@ -521,19 +490,6 @@ function RightSideView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
       <polygon points={p([[3,-2,2.5],[3,2,2.5],[0,2,4],[0,-2,4]])} fill="#14173a" stroke="#312e81" strokeWidth="1.2" style={{pointerEvents:"none"}}/>
       <line x1={iso(0,-2,4)[0]} y1={iso(0,-2,4)[1]} x2={iso(0,2,4)[0]} y2={iso(0,2,4)[1]}
         stroke="#6d5ce7" strokeWidth="1.4" opacity="0.8" style={{pointerEvents:"none"}}/>
-      {(() => {
-        const rania=getMember("rania",members);
-        if(!rania) return null;
-        const col=MEMBER_COLORS[rania.color]?.hex||DEFAULT_COLORS.rania;
-        const [lx,ly]=iso(2,0.5,2.7);
-        return (
-          <g style={{pointerEvents:"none"}}>
-            <text x={lx} y={ly-10} textAnchor="middle" fontSize="9" style={{fontFamily:"system-ui"}}>{rania.emoji||"🌙"}</text>
-            <text x={lx} y={ly} textAnchor="middle" fontSize="5" fontWeight="700" fill={col}
-              style={{fontFamily:"system-ui,sans-serif"}}>{rania.name}</text>
-          </g>
-        );
-      })()}
     </svg>
   );
 }
@@ -554,9 +510,9 @@ function TopDownView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
     { id:"rasya",   x1:-3,y1:-2,x2:-1,y2:0 },
     { id:"living",  x1:-1,y1:-2,x2: 1,y2:0 },
     { id:"dad",     x1: 1,y1:-2,x2: 3,y2:0 },
-    { id:"mom",     x1:-3,y1: 0,x2:-1,y2:2 },
-    { id:"hallway", x1:-1,y1: 0,x2: 1,y2:2 },
-    { id:"radif",   x1: 1,y1: 0,x2: 3,y2:2 },
+    { id:"mom",   x1:-3,y1: 0,x2:-1,y2:2 },
+    { id:"rania", x1:-1,y1: 0,x2: 1,y2:2 },
+    { id:"radif", x1: 1,y1: 0,x2: 3,y2:2 },
   ];
 
   return (
@@ -575,7 +531,7 @@ function TopDownView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
         fill="#0a1018" stroke="#1e293b" strokeWidth="1.5"/>
 
       {rooms.map(r => {
-        const m = r.id!=="hallway" ? getMember(r.id,members) : null;
+        const m = getMember(r.id,members);
         const col = m?(MEMBER_COLORS[m.color]?.hex||DEFAULT_COLORS[r.id]):DEFAULT_COLORS[r.id]||"#1a2535";
         const isHov=hov===r.id;
         const [ax,ay]=s(r.x1,r.y1),[bx,by]=s(r.x2,r.y2);
@@ -632,23 +588,6 @@ function TopDownView({ members, statuses, onRoom, onTV, tvColor, tvFlash }) {
             <rect x={cx-18} y={cy-11} width="36" height="22" rx="2" fill="#060a14" stroke={tvColor} strokeWidth="1.5"/>
             <text x={cx} y={cy+2} textAnchor="middle" fontSize="5.5" fontWeight="800" fill="white" opacity="0.92"
               style={{fontFamily:"system-ui,sans-serif"}}>ENTER HQ</text>
-          </g>
-        );
-      })()}
-
-      {/* Roof indicator — just a label */}
-      {(() => {
-        const rania = getMember("rania", members);
-        if (!rania) return null;
-        const col = MEMBER_COLORS[rania.color]?.hex || DEFAULT_COLORS.rania;
-        const [cx,cy]=s(2,1);
-        return (
-          <g style={{pointerEvents:"none"}}>
-            <text x={cx} y={cy-8} textAnchor="middle" fontSize="14" style={{fontFamily:"system-ui"}}>{rania.emoji||"🌙"}</text>
-            <text x={cx} y={cy+4} textAnchor="middle" fontSize="7" fontWeight="700" fill={col}
-              style={{fontFamily:"system-ui,sans-serif"}}>{rania.name}</text>
-            <text x={cx} y={cy+13} textAnchor="middle" fontSize="5" fill={col} opacity="0.55"
-              style={{fontFamily:"system-ui,sans-serif"}}>attic</text>
           </g>
         );
       })()}
