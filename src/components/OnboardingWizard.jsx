@@ -120,7 +120,7 @@ export default function OnboardingWizard() {
     return (
       <>
         <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm" />
-        <div className="fixed left-0 right-0 z-[210] md:left-1/2 md:-translate-x-1/2 md:w-[420px] md:bottom-8" style={{ bottom: "env(safe-area-inset-bottom, 0px)", left: "56px" }}>
+        <div className="fixed left-0 right-0 z-[210] md:left-1/2 md:-translate-x-1/2 md:w-[420px] md:bottom-8" style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
           <div className="bg-[#1a1a2e] border border-white/10 rounded-t-3xl md:rounded-3xl shadow-2xl p-6 pb-10 md:pb-6">
             <p className="text-4xl mb-3 text-center">📖</p>
             <p className="font-heading font-bold text-white text-lg text-center mb-1">Want a quick guide?</p>
@@ -166,7 +166,7 @@ export default function OnboardingWizard() {
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 22, stiffness: 300 }}
           className="fixed right-0 z-[150] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:bottom-6"
-          style={{ bottom: "env(safe-area-inset-bottom, 0px)", left: "56px" }}
+          style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
         >
           <div className="bg-[#1a1a2e] border border-white/10 rounded-t-3xl md:rounded-3xl shadow-2xl p-5 pb-8 md:pb-5">
             {/* Step counter + skip */}
