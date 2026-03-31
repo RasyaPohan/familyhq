@@ -404,7 +404,7 @@ export default function FamilyPet() {
   if (!familyCode) return null;
 
   const pos = CORNERS[cornerIdx];
-  const catSize = stage.id === "legend" ? 64 : stage.id === "cat" || stage.id === "happy_cat" ? 60 : stage.id === "kitten" ? 56 : 68;
+  const catSize = stage.id === "legend" ? 64 : stage.id === "cat" || stage.id === "happy_cat" ? 60 : stage.id === "kitten" ? 56 : 80;
 
   return (
     <>
@@ -524,23 +524,55 @@ export default function FamilyPet() {
           <AnimatePresence>
             {bubble && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8, y: 8 }}
+                initial={{ opacity: 0, scale: 0.88, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 8 }}
-                transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                className="absolute bottom-full mb-3 right-0 max-w-[200px] rounded-2xl rounded-br-sm px-3 py-2 text-xs font-medium shadow-xl whitespace-pre-wrap"
+                exit={{ opacity: 0, scale: 0.88, y: 10 }}
+                transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                className="absolute"
                 style={{
-                  background: "#1c1c2e",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.9)",
-                  lineHeight: "1.4",
+                  bottom: "calc(100% + 14px)",
+                  right: 0,
+                  width: "220px",
                 }}
               >
-                {bubble.text}
-                <button
-                  onClick={() => setBubble(null)}
-                  className="ml-2 text-white/30 hover:text-white/60"
-                >×</button>
+                {/* Bubble card */}
+                <div
+                  className="relative rounded-2xl p-3 shadow-2xl"
+                  style={{
+                    background: "#1c1c2e",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                  }}
+                >
+                  {/* Close button — top right inside card */}
+                  <button
+                    onClick={() => setBubble(null)}
+                    className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors text-sm leading-none"
+                    style={{ fontSize: "14px" }}
+                  >×</button>
+
+                  {/* Message text */}
+                  <p
+                    className="pr-5 whitespace-pre-wrap"
+                    style={{ color: "rgba(255,255,255,0.92)", fontSize: "14px", lineHeight: "1.45" }}
+                  >
+                    {bubble.text}
+                  </p>
+                </div>
+
+                {/* Triangle pointer pointing down toward the pet */}
+                <div
+                  className="absolute"
+                  style={{
+                    bottom: "-8px",
+                    right: "28px",
+                    width: 0,
+                    height: 0,
+                    borderLeft: "8px solid transparent",
+                    borderRight: "8px solid transparent",
+                    borderTop: "8px solid #1c1c2e",
+                    filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.3))",
+                  }}
+                />
               </motion.div>
             )}
           </AnimatePresence>
