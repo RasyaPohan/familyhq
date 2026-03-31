@@ -24,13 +24,12 @@ function getStage(totalXp) {
 // ─── Corner positions ──────────────────────────────────────────────────────────
 // All corners use CSS calc so the pet sits just above the safe area inset.
 // The string values are passed directly as the `animate` target for the motion.div.
-const CORNER_STYLES = [
-  { bottom: 16, right: 16, left: "auto", top: "auto" },
-  { bottom: 16, right: "auto", left: 80, top: "auto" },  // left side — clear of + button
-  { bottom: "auto", top: 80, right: 16, left: "auto" },  // top right
+// 3 allowed corners — bottom-left is reserved for the + button
+const CORNERS = [
+  { id: "bottom-right", bottom: 16, right: 16, left: "auto", top: "auto" },
+  { id: "top-right",    bottom: "auto", top: 80, right: 16, left: "auto" },
+  { id: "top-left",     bottom: "auto", top: 80, right: "auto", left: 16 },
 ];
-// Keep legacy alias so nothing else breaks
-const CORNERS = CORNER_STYLES;
 
 // ─── Idle speech messages ──────────────────────────────────────────────────────
 const IDLE_MESSAGES = [
@@ -466,8 +465,54 @@ export default function FamilyPet() {
 
   if (!familyCode) return null;
 
-  const pos = CORNERS[cornerIdx];
+  const corner = CORNERS[cornerIdx];
+  // Strip `id` before passing to Framer Motion animate (only numeric/string CSS props allowed)
+  const { id: cornerId, ...pos } = corner;
   const catSize = stage.id === "legend" ? 64 : stage.id === "cat" || stage.id === "happy_cat" ? 60 : stage.id === "kitten" ? 56 : 80;
+
+  // Derive bubble position style based on which corner the pet is in
+  const isOnLeft = cornerId === "top-left";
+  const isAtTop  = cornerId === "top-right" || cornerId === "top-left";
+  const bubbleStyle = isOnLeft
+    ? { // pet on left — bubble opens rightward
+        position: "absolute",
+        top: isAtTop ? "calc(100% + 12px)" : "auto",
+        bottom: isAtTop ? "auto" : "calc(100% + 12px)",
+        left: 0,
+        right: "auto",
+        width: "200px",
+        zIndex: 10,
+      }
+    : { // pet on right (bottom-right or top-right) — bubble opens leftward
+        position: "absolute",
+        top: isAtTop ? "calc(100% + 12px)" : "auto",
+        bottom: isAtTop ? "auto" : "calc(100% + 12px)",
+        right: 0,
+        left: "auto",
+        width: "200px",
+        zIndex: 10,
+      };
+
+  // Triangle pointer points toward the pet
+  // - pet on left: triangle on left side of bubble pointing left-down or left-up
+  // - pet on right: triangle on right side pointing right-down or right-up
+  // - pet at bottom: triangle points down; at top: triangle points up
+  const triangleStyle = (() => {
+    const base = { position: "absolute", width: 0, height: 0 };
+    if (isAtTop) {
+      // bubble is below pet → triangle at top of bubble pointing up
+      const side = isOnLeft ? { left: "18px" } : { right: "18px" };
+      return { ...base, top: "-7px", ...side,
+        borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
+        borderBottom: "7px solid #1a1a2e" };
+    } else {
+      // bubble is above pet → triangle at bottom of bubble pointing down
+      const side = isOnLeft ? { left: "18px" } : { right: "18px" };
+      return { ...base, bottom: "-7px", ...side,
+        borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
+        borderTop: "7px solid #1a1a2e" };
+    }
+  })();
 
   return (
     <>
@@ -571,21 +616,15 @@ export default function FamilyPet() {
       >
         <div className="relative select-none">
 
-          {/* Speech bubble — anchored above pet, opens leftward so it stays on screen */}
+          {/* Speech bubble — smart positioning based on which corner pet is in */}
           <AnimatePresence>
             {bubble && (
               <motion.div
-                initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                initial={{ opacity: 0, y: isAtTop ? -6 : 6, scale: 0.92 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.92 }}
+                exit={{ opacity: 0, y: isAtTop ? -6 : 6, scale: 0.92 }}
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                style={{
-                  position: "absolute",
-                  bottom: "calc(100% + 12px)",
-                  right: 0,
-                  width: "200px",
-                  zIndex: 10,
-                }}
+                style={bubbleStyle}
               >
                 <div
                   style={{
@@ -596,7 +635,6 @@ export default function FamilyPet() {
                     position: "relative",
                   }}
                 >
-                  {/* Close button */}
                   <button
                     onClick={() => setBubble(null)}
                     style={{
@@ -617,7 +655,6 @@ export default function FamilyPet() {
                       justifyContent: "center",
                     }}
                   >×</button>
-                  {/* Message */}
                   <p
                     style={{
                       color: "rgba(255,255,255,0.92)",
@@ -629,17 +666,7 @@ export default function FamilyPet() {
                     }}
                   >{bubble.text}</p>
                 </div>
-                {/* Triangle pointer */}
-                <div style={{
-                  position: "absolute",
-                  bottom: "-7px",
-                  right: "22px",
-                  width: 0,
-                  height: 0,
-                  borderLeft: "7px solid transparent",
-                  borderRight: "7px solid transparent",
-                  borderTop: "7px solid #1a1a2e",
-                }} />
+                <div style={triangleStyle} />
               </motion.div>
             )}
           </AnimatePresence>
