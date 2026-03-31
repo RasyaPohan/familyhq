@@ -4,7 +4,7 @@ import XPPopup from "@/components/XPPopup";
 import LevelUpOverlay from "@/components/LevelUpOverlay";
 import FamilyPet from "@/components/FamilyPet";
 import { Sun, Moon, Home, Calendar, CheckSquare, Camera, Utensils, DollarSign, Pin, Target, Gift, HelpCircle, LogOut, DoorOpen, Menu } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_COLORS, clearFamilySession } from "@/lib/familyStore";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,6 +22,10 @@ const NAV_ITEMS = [
 
 const NAV_PATHS = NAV_ITEMS.map((i) => i.path);
 
+// Spring physics for settle animation
+const SPRING = "transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+const SPRING_BOUNCE = "transform 0.45s cubic-bezier(0.34, 1.26, 0.64, 1)";
+
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,9 +33,15 @@ export default function Layout() {
   const [isDark, setIsDark] = useState(getThemeMode() === "dark");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const memberColor = member ? MEMBER_COLORS[member.color] : MEMBER_COLORS.purple;
+
+  // Swipe state
+  const mainRef = useRef(null);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
-  const memberColor = member ? MEMBER_COLORS[member.color] : MEMBER_COLORS.purple;
+  const touchStartTime = useRef(null);
+  const isDragging = useRef(false);
+  const isLocked = useRef(false); // locked to vertical scroll, ignore horizontal
 
   useEffect(() => {
     const checkMember = () => setMember(getActiveMember());
@@ -43,7 +53,6 @@ export default function Layout() {
     };
   }, []);
 
-  // Close sidebar on navigation
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   const toggleTheme = () => {
@@ -72,45 +81,123 @@ export default function Layout() {
     setSidebarOpen(false);
   };
 
-  // Swipe gesture handlers
-  const handleTouchStart = (e) => {
+  // ── Swipe gesture with live tracking ──────────────────────────────────────
+
+  const setTranslate = useCallback((x, animated = false) => {
+    const el = mainRef.current;
+    if (!el) return;
+    el.style.transition = animated ? SPRING_BOUNCE : "none";
+    el.style.transform = x === 0 ? "" : `translateX(${x}px)`;
+  }, []);
+
+  const commitNav = useCallback((targetPath) => {
+    const el = mainRef.current;
+    if (!el) return;
+    // Snap to edge off-screen, then navigate (no flash — new page renders into position)
+    el.style.transition = SPRING;
+    el.style.transform = "";
+    navigate(targetPath);
+  }, [navigate]);
+
+  const snapBack = useCallback(() => {
+    setTranslate(0, true);
+    setTimeout(() => {
+      if (mainRef.current) {
+        mainRef.current.style.transition = "";
+        mainRef.current.style.transform = "";
+      }
+    }, 450);
+  }, [setTranslate]);
+
+  const handleTouchStart = useCallback((e) => {
+    if (sidebarOpen) return;
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
-  };
+    touchStartTime.current = Date.now();
+    isDragging.current = false;
+    isLocked.current = false;
 
-  const handleTouchEnd = (e) => {
-    if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    touchStartX.current = null;
-    touchStartY.current = null;
+    // Remove any leftover transition so dragging is instant
+    if (mainRef.current) {
+      mainRef.current.style.transition = "none";
+    }
+  }, [sidebarOpen]);
 
-    if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 50) return;
+  const handleTouchMove = useCallback((e) => {
+    if (touchStartX.current === null || isLocked.current) return;
 
-    // Swipe right from left edge opens sidebar
-    if (dx > 0 && e.changedTouches[0].clientX - dx < 30) {
-      setSidebarOpen(true);
-      return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+
+    // Determine axis lock on first significant movement
+    if (!isDragging.current) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // not moved enough yet
+      if (Math.abs(dy) > Math.abs(dx)) {
+        // Primarily vertical — lock to scroll, ignore horizontal
+        isLocked.current = true;
+        return;
+      }
+      isDragging.current = true;
     }
 
-    if (sidebarOpen) return; // don't page-navigate while sidebar is open
+    // Swipe right from left edge (≤30px) → open sidebar
+    if (dx > 0 && touchStartX.current <= 30) {
+      setSidebarOpen(true);
+      touchStartX.current = null;
+      return;
+    }
 
     const currentIdx = NAV_PATHS.indexOf(location.pathname);
     if (currentIdx === -1) return;
 
-    if (dx < 0 && currentIdx < NAV_PATHS.length - 1) {
-      navigate(NAV_PATHS[currentIdx + 1]);
-    } else if (dx > 0 && currentIdx > 0) {
-      navigate(NAV_PATHS[currentIdx - 1]);
+    // Clamp drag: can't drag past edges
+    const canGoNext = dx < 0 && currentIdx < NAV_PATHS.length - 1;
+    const canGoPrev = dx > 0 && currentIdx > 0;
+    if (!canGoNext && !canGoPrev) return;
+
+    // Rubber-band resistance at edges
+    const clampedDx = canGoNext || canGoPrev ? dx : dx * 0.15;
+
+    // Prevent page scroll while swiping horizontally
+    e.preventDefault();
+    setTranslate(clampedDx);
+  }, [location.pathname, setTranslate, sidebarOpen]);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStartX.current === null || isLocked.current || !isDragging.current) {
+      touchStartX.current = null;
+      isDragging.current = false;
+      isLocked.current = false;
+      return;
     }
-  };
+
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dt = Date.now() - touchStartTime.current;
+    const velocity = Math.abs(dx) / dt; // px/ms
+    const screenW = window.innerWidth;
+    const threshold = screenW * 0.30;
+    const fastSwipe = velocity > 0.4; // 400px/s
+
+    touchStartX.current = null;
+    isDragging.current = false;
+    isLocked.current = false;
+
+    const currentIdx = NAV_PATHS.indexOf(location.pathname);
+    if (currentIdx === -1) { snapBack(); return; }
+
+    if (dx < 0 && (Math.abs(dx) > threshold || fastSwipe) && currentIdx < NAV_PATHS.length - 1) {
+      commitNav(NAV_PATHS[currentIdx + 1]);
+    } else if (dx > 0 && (Math.abs(dx) > threshold || fastSwipe) && currentIdx > 0) {
+      commitNav(NAV_PATHS[currentIdx - 1]);
+    } else {
+      snapBack();
+    }
+  }, [location.pathname, commitNav, snapBack]);
 
   return (
     <div
       className="bg-background flex flex-col"
       style={{ minHeight: "100dvh" }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     >
       <OnboardingWizard />
       <XPPopup />
@@ -119,7 +206,6 @@ export default function Layout() {
 
       {/* Top Bar */}
       <header className="sticky top-0 z-20 bg-card/90 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center shrink-0">
-        {/* Hamburger — left */}
         <motion.button
           onClick={() => setSidebarOpen(true)}
           whileTap={{ scale: 0.85 }}
@@ -129,13 +215,11 @@ export default function Layout() {
           <Menu className="w-5 h-5 text-foreground" />
         </motion.button>
 
-        {/* Logo — center */}
         <div className="flex-1 flex items-center justify-center gap-2">
           <span className="text-xl">🏠</span>
           <span className="font-heading font-bold text-base">Family HQ</span>
         </div>
 
-        {/* Member avatar — right */}
         {member ? (
           <motion.button
             onClick={() => navigate("/select")}
@@ -150,8 +234,15 @@ export default function Layout() {
         )}
       </header>
 
-      {/* Page content */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Page content — receives touch events and live transform */}
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto"
+        style={{ willChange: "transform", touchAction: "pan-y" }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <Outlet />
       </main>
 
@@ -224,9 +315,7 @@ export default function Layout() {
                     onClick={() => handleNavClick(item.path)}
                     whileTap={{ scale: 0.97 }}
                     className="relative w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
-                    style={{
-                      background: isActive ? `${memberColor.hex}18` : "transparent",
-                    }}
+                    style={{ background: isActive ? `${memberColor.hex}18` : "transparent" }}
                   >
                     {isActive && (
                       <motion.div
@@ -254,7 +343,7 @@ export default function Layout() {
               })}
             </nav>
 
-            {/* Sidebar footer actions */}
+            {/* Sidebar footer */}
             <div className="border-t border-white/8 px-3 py-3 space-y-0.5">
               <button
                 onClick={() => handleNavClick("/guide")}
