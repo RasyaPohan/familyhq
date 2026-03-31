@@ -85,7 +85,7 @@ export default function FamilySelect() {
     setActiveMember(member);
     window.dispatchEvent(new Event('member-changed'));
     if (!isOnboarded(member.id)) startOnboarding(member);
-    navigate('/home');
+    navigate('/outdoor');
   };
 
   const handleAddMember = async () => {

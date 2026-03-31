@@ -852,7 +852,7 @@ export default function IsometricHome() {
                 </div>
               </div>
               <nav style={{ flex: 1, padding: 10, overflowY: "auto" }}>
-                {[["🏠 HQ Home", "/home"], ["📊 Dashboard", "/dashboard"], ["📅 Calendar", "/calendar"],
+                {[["🏠 HQ Home", "/outdoor"], ["📊 Dashboard", "/dashboard"], ["📅 Calendar", "/calendar"],
                   ["✅ Chores", "/chores"], ["🍽️ Meals", "/meals"], ["💰 Budget", "/budget"],
                   ["📌 Board", "/noticeboard"], ["🎯 Goals", "/goals"], ["🎁 Rewards", "/rewards"],
                   ["📸 Moments", "/moments"], ["📖 Guide", "/guide"]].map(([label, path]) => (

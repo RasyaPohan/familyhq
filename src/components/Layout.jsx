@@ -9,7 +9,7 @@ import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_CO
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
-  { path: "/home", icon: Building2, label: "HQ Home" },
+  { path: "/outdoor", icon: Building2, label: "HQ Home" },
   { path: "/dashboard", icon: Home, label: "Dashboard" },
   { path: "/calendar", icon: Calendar, label: "Calendar" },
   { path: "/chores", icon: CheckSquare, label: "Chores" },
