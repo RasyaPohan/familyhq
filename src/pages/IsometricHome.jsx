@@ -5,63 +5,383 @@ import { Menu } from "lucide-react";
 import { getActiveMember, getFamilyCode, setActiveMember, MEMBER_COLORS } from "@/lib/familyStore";
 import { db } from "@/lib/db";
 
-// ─── Star field ────────────────────────────────────────────────────────────────
+// ─── Star field (static seed so no re-render flicker) ─────────────────────────
 const STARS = Array.from({ length: 55 }, (_, i) => ({
   id: i,
-  x: (Math.sin(i * 137.5) * 0.5 + 0.5) * 100,
-  y: (Math.cos(i * 97.3) * 0.5 + 0.5) * 100,
-  size: (i % 3 === 0 ? 1.5 : 0.8),
-  delay: (i % 5) * 0.8,
-  duration: 2.5 + (i % 3),
+  x: ((Math.sin(i * 137.508) + 1) / 2) * 100,
+  y: ((Math.cos(i * 97.31) + 1) / 2) * 100,
+  r: i % 4 === 0 ? 1.4 : 0.7,
+  delay: (i % 5) * 0.9,
+  dur: 2.2 + (i % 4) * 0.7,
 }));
 
 function StarField() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
       {STARS.map((s) => (
-        <motion.div
-          key={s.id}
-          className="absolute rounded-full bg-white"
-          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size }}
-          animate={{ opacity: [0.08, 0.6, 0.08] }}
-          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
+        <motion.div key={s.id}
+          style={{
+            position: "absolute", borderRadius: "50%", background: "white",
+            left: `${s.x}%`, top: `${s.y}%`, width: s.r, height: s.r,
+          }}
+          animate={{ opacity: [0.06, 0.55, 0.06] }}
+          transition={{ duration: s.dur, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
         />
       ))}
     </div>
   );
 }
 
-// ─── TV cycling colors ─────────────────────────────────────────────────────────
-const TV_COLORS = ["#8B5CF6", "#3B82F6", "#10B981", "#EC4899", "#F59E0B"];
+// ─── Isometric projection ──────────────────────────────────────────────────────
+// Origin at screen (200, 300). Scale = 42px per isometric unit.
+// iso_x → right-forward, iso_y → left-forward, iso_z → up
+const S = 42; // scale
+const OX = 200, OY = 300; // origin
 
-// ─── Room zones (SVG coords, viewBox 0 0 400 310) ─────────────────────────────
-const ROOM_ZONES = [
-  { id: "rasya",       points: "100,90 200,45 200,140 100,185", labelX: 132, labelY: 120 },
-  { id: "dad",         points: "200,45 300,90 300,185 200,140",  labelX: 262, labelY: 120 },
-  { id: "mom",         points: "60,185 100,185 100,275 60,275",  labelX: 72,  labelY: 228 },
-  { id: "radif-rania", points: "300,185 340,185 340,275 300,275",labelX: 316, labelY: 228 },
-  { id: "living",      points: "100,185 300,185 300,275 100,275",labelX: 200, labelY: 228 },
+function iso(ix, iy, iz = 0) {
+  return [
+    OX + (ix - iy) * S * Math.cos(Math.PI / 6),
+    OY + (ix + iy) * S * Math.sin(Math.PI / 6) - iz * S,
+  ];
+}
+
+function pt(ix, iy, iz = 0) {
+  const [x, y] = iso(ix, iy, iz);
+  return `${x.toFixed(1)},${y.toFixed(1)}`;
+}
+
+function pts(...coords) {
+  return coords.map(([ix, iy, iz]) => pt(ix, iy, iz)).join(" ");
+}
+
+// ─── House geometry constants ─────────────────────────────────────────────────
+// House footprint: x from -3 to 3, y from -2 to 2, walls z from 0 to 2.5
+// Roof ridge at z=4, centered x=0, spanning y -2 to 2
+const WX = 3, WY = 2, WZ = 2.5, RZ = 4;
+
+// 8 box corners
+// Bottom: BFL(-3,-2,0) BFR(3,-2,0) BBR(3,2,0) BBL(-3,2,0)
+// Top:    TFL(-3,-2,WZ) TFR(3,-2,WZ) TBR(3,2,WZ) TBL(-3,2,WZ)
+// Ridge:  RF(0,-2,RZ) RB(0,2,RZ)
+
+// ─── Room definitions (6 rooms in a 3×2 grid) ────────────────────────────────
+// Grid: x cols [-3,-1], [-1,1], [1,3]; y rows [-2,0], [0,2]
+// Layout:
+//   Row 0 (front, y -2..0): Rasya(-3→-1), Living(-1→1), Dad(1→3)
+//   Row 1 (back,  y 0..2):  Mom(-3→-1),  Hallway(-1→1), Radif(1→3)
+//   Rania gets an attic room (roof level) — displayed as a loft label
+
+const ROOMS = [
+  {
+    id: "rasya",
+    nameMatch: "rasya",
+    col: [-3, -1], row: [-2, 0],
+    defaultColor: "#8B5CF6",
+    label: "Rasya",
+    furniture: "bed-tl",
+  },
+  {
+    id: "living",
+    nameMatch: null,
+    col: [-1, 1], row: [-2, 0],
+    defaultColor: "#334155",
+    label: "Living",
+    furniture: "tv",
+  },
+  {
+    id: "dad",
+    nameMatch: "dad",
+    col: [1, 3], row: [-2, 0],
+    defaultColor: "#1E40AF",
+    label: "Dad",
+    furniture: "desk-tr",
+  },
+  {
+    id: "mom",
+    nameMatch: "mom",
+    col: [-3, -1], row: [0, 2],
+    defaultColor: "#EC4899",
+    label: "Mom",
+    furniture: "bed-bl",
+  },
+  {
+    id: "hallway",
+    nameMatch: null,
+    col: [-1, 1], row: [0, 2],
+    defaultColor: "#1e293b",
+    label: "",
+    furniture: "plant",
+  },
+  {
+    id: "radif",
+    nameMatch: "radif",
+    col: [1, 3], row: [0, 2],
+    defaultColor: "#F59E0B",
+    label: "Radif",
+    furniture: "bed-br",
+  },
 ];
 
-// ─── Member → room mapping ─────────────────────────────────────────────────────
-function getMemberForRoom(zoneId, members) {
+// TV cycling colors
+const TV_COLORS = ["#8B5CF6", "#3B82F6", "#10B981", "#EC4899", "#F59E0B"];
+
+// ─── Member mapping helpers ───────────────────────────────────────────────────
+function getMemberForRoom(roomId, members) {
   if (!members.length) return null;
-  if (zoneId === "rasya")
-    return members.find((m) => m.name?.toLowerCase().includes("rasya")) ?? null;
-  if (zoneId === "dad")
-    return members.find((m) =>
-      m.role === "Parent" && m.name?.toLowerCase().match(/dad|father|ayah|bapak|papa|yusuf|yanwar|husein/)
-    ) ?? null;
-  if (zoneId === "mom")
-    return members.find((m) =>
-      m.role === "Parent" && !m.name?.toLowerCase().match(/dad|father|ayah|bapak|papa|yusuf|yanwar|husein/)
-    ) ?? null;
-  if (zoneId === "radif-rania")
-    return members.filter((m) => m.name?.toLowerCase().match(/radif|rania/));
+  switch (roomId) {
+    case "rasya":
+      return members.find((m) => m.name?.toLowerCase().includes("rasya")) ?? null;
+    case "dad":
+      return members.find((m) =>
+        m.role === "Parent" &&
+        m.name?.toLowerCase().match(/dad|father|ayah|bapak|papa|yusuf|yanwar|husein/)
+      ) ?? null;
+    case "mom":
+      return members.find((m) =>
+        m.role === "Parent" &&
+        !m.name?.toLowerCase().match(/dad|father|ayah|bapak|papa|yusuf|yanwar|husein/)
+      ) ?? null;
+    case "radif":
+      return members.find((m) => m.name?.toLowerCase().includes("radif")) ?? null;
+    case "rania":
+      return members.find((m) => m.name?.toLowerCase().includes("rania")) ?? null;
+    default:
+      return null;
+  }
+}
+
+// ─── Furniture SVG elements (isometric) ──────────────────────────────────────
+function Furniture({ type, x1, y1, x2, y2, color }) {
+  // x1,y1 = near corner; x2,y2 = far corner of the room tile
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+
+  if (type === "tv") {
+    // TV screen on far wall — drawn as a glowing rect in iso space
+    // positioned near center of living room
+    const [sx, sy] = iso(mx - 0.3, my - 1.6, 1.0);
+    const [ex, ey] = iso(mx + 0.3, my - 1.6, 1.0);
+    return (
+      <g>
+        {/* TV stand */}
+        <line x1={sx.toFixed(1)} y1={(sy + 14).toFixed(1)}
+          x2={sx.toFixed(1)} y2={(sy + 20).toFixed(1)}
+          stroke="#334155" strokeWidth="2" />
+        {/* Screen body */}
+        <rect
+          x={(sx - 18).toFixed(1)} y={(sy - 10).toFixed(1)}
+          width="36" height="24" rx="2"
+          fill="#0a0e1a" stroke="none"
+        />
+      </g>
+    );
+  }
+
+  if (type === "bed-tl" || type === "bed-bl" || type === "bed-br") {
+    const bx = type === "bed-tl" ? x1 + 0.4 : type === "bed-bl" ? x1 + 0.4 : x2 - 1.6;
+    const by = type === "bed-tl" ? y1 + 0.3 : y2 - 1.4;
+    // Bed: a flat isometric box
+    return (
+      <g opacity="0.85">
+        {/* Mattress top */}
+        <polygon points={pts([bx,by+0.6,0.4],[bx+1.0,by+0.6,0.4],[bx+1.0,by+1.3,0.4],[bx,by+1.3,0.4])}
+          fill={color} fillOpacity="0.25" stroke={color} strokeWidth="0.5" strokeOpacity="0.4" />
+        {/* Headboard */}
+        <polygon points={pts([bx,by+0.6,0.4],[bx+1.0,by+0.6,0.4],[bx+1.0,by+0.6,0.75],[bx,by+0.6,0.75])}
+          fill={color} fillOpacity="0.35" stroke={color} strokeWidth="0.5" strokeOpacity="0.5" />
+        {/* Pillow */}
+        <polygon points={pts([bx+0.15,by+0.7,0.42],[bx+0.55,by+0.7,0.42],[bx+0.55,by+0.92,0.42],[bx+0.15,by+0.92,0.42])}
+          fill="white" fillOpacity="0.15" />
+      </g>
+    );
+  }
+
+  if (type === "desk-tr") {
+    const dx = x2 - 1.4, dy = y1 + 0.3;
+    return (
+      <g opacity="0.85">
+        {/* Desk top */}
+        <polygon points={pts([dx,dy,0.5],[dx+1.0,dy,0.5],[dx+1.0,dy+0.7,0.5],[dx,dy+0.7,0.5])}
+          fill={color} fillOpacity="0.25" stroke={color} strokeWidth="0.5" strokeOpacity="0.4" />
+        {/* Monitor */}
+        <polygon points={pts([dx+0.3,dy+0.05,0.5],[dx+0.8,dy+0.05,0.5],[dx+0.8,dy+0.05,0.85],[dx+0.3,dy+0.05,0.85])}
+          fill="#1e3a5f" fillOpacity="0.8" stroke="#3b82f6" strokeWidth="0.5" />
+      </g>
+    );
+  }
+
+  if (type === "plant") {
+    const [px, py] = iso(mx, my, 0.05);
+    return (
+      <g>
+        <rect x={(px - 5).toFixed(1)} y={(py - 4).toFixed(1)} width="10" height="8" rx="2"
+          fill="#14532d" opacity="0.7" />
+        <circle cx={px.toFixed(1)} cy={(py - 8).toFixed(1)} r="8"
+          fill="#166534" opacity="0.6" />
+        <circle cx={(px - 5).toFixed(1)} cy={(py - 5).toFixed(1)} r="5"
+          fill="#15803d" opacity="0.5" />
+        <circle cx={(px + 5).toFixed(1)} cy={(py - 5).toFixed(1)} r="5"
+          fill="#15803d" opacity="0.5" />
+      </g>
+    );
+  }
   return null;
 }
 
-// ─── Isometric House SVG ───────────────────────────────────────────────────────
+// ─── Room floor tile ──────────────────────────────────────────────────────────
+function RoomTile({ room, member, memberColor, isHovered, status, onClick, onEnter, onLeave }) {
+  const [x1, x2] = room.col;
+  const [y1, y2] = room.row;
+  const color = memberColor || room.defaultColor;
+
+  // 4 floor corners (z=0)
+  const floorPts = pts([x1,y1,0],[x2,y1,0],[x2,y2,0],[x1,y2,0]);
+
+  // Wall strips — only draw forward-facing walls
+  // Left wall (visible if this is a front row room, y1 == -2) → front face
+  // Right wall (x2 == 3) → right face
+  const isFrontRow = y1 === -2;
+  const isRightCol = x2 === 3;
+  const isLeftCol = x1 === -3;
+
+  return (
+    <g>
+      {/* Floor */}
+      <polygon
+        points={floorPts}
+        fill={color}
+        fillOpacity={isHovered ? 0.28 : 0.14}
+        stroke={color}
+        strokeWidth={isHovered ? 1.5 : 0.7}
+        strokeOpacity={isHovered ? 0.9 : 0.4}
+        style={{ transition: "fill-opacity 0.18s" }}
+      />
+      {/* Subtle inner wall coloring on front face */}
+      {isFrontRow && (
+        <polygon
+          points={pts([x1,y1,0],[x2,y1,0],[x2,y1,WZ],[x1,y1,WZ])}
+          fill={color}
+          fillOpacity={isHovered ? 0.15 : 0.07}
+          stroke={color}
+          strokeWidth="0.4"
+          strokeOpacity="0.2"
+          style={{ transition: "fill-opacity 0.18s", pointerEvents: "none" }}
+        />
+      )}
+      {/* Furniture */}
+      {room.id !== "hallway" && room.id !== "living" && (
+        <Furniture type={room.furniture} x1={x1} y1={y1} x2={x2} y2={y2} color={color} />
+      )}
+      {/* Hit area */}
+      <polygon
+        points={floorPts}
+        fill="transparent"
+        stroke="transparent"
+        strokeWidth="8"
+        style={{ cursor: (member || room.id === "living") ? "pointer" : "default" }}
+        onClick={onClick}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        onTouchStart={onEnter}
+        onTouchEnd={onLeave}
+      />
+    </g>
+  );
+}
+
+// ─── Room label (floats above floor) ─────────────────────────────────────────
+function RoomLabel({ room, member, memberColor, status }) {
+  const [x1, x2] = room.col;
+  const [y1, y2] = room.row;
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const [lx, ly] = iso(mx, my, 0.05);
+  const color = memberColor || room.defaultColor;
+
+  if (!member && room.id !== "living") return null;
+
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {member && (
+        <>
+          {/* Emoji */}
+          <text x={lx.toFixed(1)} y={(ly - 10).toFixed(1)}
+            textAnchor="middle" fontSize="11" style={{ fontFamily: "system-ui" }}>
+            {member.emoji || member.name[0]}
+          </text>
+          {/* Name */}
+          <text x={lx.toFixed(1)} y={(ly + 3).toFixed(1)}
+            textAnchor="middle" fontSize="6" fontWeight="700" fill={color}
+            style={{ fontFamily: "system-ui,sans-serif" }}>
+            {member.name}
+          </text>
+          {/* Status badge */}
+          {status && (
+            <>
+              <rect x={(lx - 13).toFixed(1)} y={(ly + 5).toFixed(1)} width="26" height="8" rx="4"
+                fill={status === "busy" ? "#7f1d1d" : status === "done" ? "#064e3b" : "#1e293b"}
+                opacity="0.9" />
+              <text x={lx.toFixed(1)} y={(ly + 11).toFixed(1)}
+                textAnchor="middle" fontSize="4.5" fontWeight="700"
+                fill={status === "busy" ? "#fca5a5" : status === "done" ? "#6ee7b7" : "#64748b"}
+                style={{ fontFamily: "system-ui,sans-serif" }}>
+                {status === "busy" ? "Busy" : status === "done" ? "✓ Done" : "Home"}
+              </text>
+            </>
+          )}
+        </>
+      )}
+    </g>
+  );
+}
+
+// ─── TV Screen (living room center) ──────────────────────────────────────────
+function TVScreen({ onTVClick, tvColor, tvFlash }) {
+  // TV sits on far wall of living room (y ≈ -1, x ≈ 0)
+  const [cx, cy] = iso(0, -1.6, 1.1);
+  const w = 26, h = 18;
+  return (
+    <g style={{ cursor: "pointer" }} onClick={onTVClick}>
+      <defs>
+        <filter id="tvG" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="5" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {/* Glow halo */}
+      <rect x={(cx - w - 4).toFixed(1)} y={(cy - h - 4).toFixed(1)}
+        width={(w * 2 + 8).toFixed(1)} height={(h + 8).toFixed(1)} rx="5"
+        fill={tvColor} opacity={tvFlash ? 0.35 : 0.15}
+        filter="url(#tvG)"
+        style={{ transition: "opacity 0.25s" }}
+      />
+      {/* Screen */}
+      <rect x={(cx - w).toFixed(1)} y={(cy - h).toFixed(1)}
+        width={(w * 2).toFixed(1)} height={h.toFixed(1)} rx="3"
+        fill="#060a14" stroke={tvColor} strokeWidth="1.8"
+      />
+      {/* Screen fill */}
+      <rect x={(cx - w + 2).toFixed(1)} y={(cy - h + 2).toFixed(1)}
+        width={(w * 2 - 4).toFixed(1)} height={(h - 4).toFixed(1)} rx="2"
+        fill={tvColor} opacity={tvFlash ? 0.3 : 0.1}
+        style={{ transition: "opacity 0.2s" }}
+      />
+      {/* Label */}
+      <text x={cx.toFixed(1)} y={(cy - h / 2 + 2).toFixed(1)}
+        textAnchor="middle" fontSize="5.2" fontWeight="800" fill="white" opacity="0.95"
+        style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "0.5px" }}>
+        ENTER HQ
+      </text>
+      {/* Stand */}
+      <line x1={cx.toFixed(1)} y1={cy.toFixed(1)}
+        x2={cx.toFixed(1)} y2={(cy + 10).toFixed(1)}
+        stroke="#334155" strokeWidth="2.5" />
+      <rect x={(cx - 8).toFixed(1)} y={(cy + 8).toFixed(1)} width="16" height="4" rx="2"
+        fill="#334155" />
+    </g>
+  );
+}
+
+// ─── Full isometric house SVG ─────────────────────────────────────────────────
 function IsometricHouse({ members, memberStatuses, onRoomClick, onTVClick }) {
   const [hoveredRoom, setHoveredRoom] = useState(null);
   const [tvColorIdx, setTvColorIdx] = useState(0);
@@ -72,7 +392,7 @@ function IsometricHouse({ members, memberStatuses, onRoomClick, onTVClick }) {
       setTvColorIdx((i) => (i + 1) % TV_COLORS.length);
       setTvFlash(true);
       setTimeout(() => setTvFlash(false), 280);
-    }, 2200);
+    }, 2000);
     return () => clearInterval(t);
   }, []);
 
@@ -80,219 +400,255 @@ function IsometricHouse({ members, memberStatuses, onRoomClick, onTVClick }) {
 
   return (
     <svg
-      viewBox="40 30 320 280"
-      width="100%"
-      height="100%"
+      viewBox="30 90 340 310"
+      width="100%" height="100%"
       style={{ display: "block", overflow: "visible" }}
     >
       <defs>
-        <filter id="tvGlow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        <filter id="wallShadow" x="-5%" y="-5%" width="110%" height="115%">
+          <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000" floodOpacity="0.4" />
         </filter>
-        <filter id="roomGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        <filter id="roofGlow" x="-10%" y="-10%" width="120%" height="130%">
+          <feGaussianBlur stdDeviation="3" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
 
-      {/* Ground shadow */}
-      <ellipse cx="200" cy="290" rx="125" ry="11" fill="rgba(0,0,0,0.35)" />
+      {/* ── Ground shadow ── */}
+      <ellipse cx={OX} cy={OY + 5} rx="145" ry="16"
+        fill="rgba(0,0,0,0.45)" />
 
-      {/* ── Roof ── */}
-      <polygon points="100,90 200,45 200,140 100,185"
-        fill="#1e1b4b" stroke="#4338ca" strokeWidth="1.2" />
-      <polygon points="200,45 300,90 300,185 200,140"
-        fill="#17144a" stroke="#4338ca" strokeWidth="1.2" />
-      <line x1="200" y1="45" x2="200" y2="140" stroke="#6d5ce7" strokeWidth="0.8" opacity="0.5" />
+      {/* ── Floor / base slab ── */}
+      <polygon
+        points={pts([-WX,-WY,0],[WX,-WY,0],[WX,WY,0],[-WX,WY,0])}
+        fill="#0f1623" stroke="#1e293b" strokeWidth="1"
+      />
 
-      {/* ── Walls ── */}
-      {/* Side left */}
-      <polygon points="60,185 100,185 100,275 60,275"
-        fill="#101520" stroke="#1f2937" strokeWidth="1.2" />
-      {/* Front left */}
-      <polygon points="100,185 200,185 200,275 100,275"
-        fill="#141928" stroke="#1f2937" strokeWidth="1.2" />
-      {/* Front right */}
-      <polygon points="200,185 300,185 300,275 200,275"
-        fill="#101520" stroke="#1f2937" strokeWidth="1.2" />
-      {/* Side right */}
-      <polygon points="300,185 340,185 340,275 300,275"
-        fill="#0c1018" stroke="#1f2937" strokeWidth="1.2" />
-      {/* Base */}
-      <rect x="60" y="275" width="280" height="7" rx="1"
-        fill="#090c14" stroke="#1f2937" strokeWidth="0.8" />
+      {/* ── Room tiles (back row first for correct z-order) ── */}
+      {[...ROOMS].reverse().map((room) => {
+        const member = getMemberForRoom(room.id, members);
+        const color = member ? (MEMBER_COLORS[member.color]?.hex || room.defaultColor) : room.defaultColor;
+        const status = member ? memberStatuses[member.id] : null;
+        return (
+          <RoomTile
+            key={room.id}
+            room={room}
+            member={member}
+            memberColor={color}
+            isHovered={hoveredRoom === room.id}
+            status={status}
+            onClick={() => {
+              if (room.id === "living") onTVClick();
+              else if (member) onRoomClick(member);
+            }}
+            onEnter={() => setHoveredRoom(room.id)}
+            onLeave={() => setHoveredRoom(null)}
+          />
+        );
+      })}
 
-      {/* ── Chimney ── */}
-      <rect x="157" y="52" width="16" height="26" fill="#1e1b4b" stroke="#4338ca" strokeWidth="0.8" />
-      <rect x="154" y="50" width="22" height="5" rx="1" fill="#2d2a6e" stroke="#4338ca" strokeWidth="0.8" />
-      {[0,1,2].map((i) => (
-        <motion.circle key={i} cx={165} cy={47} r={2.5 + i * 1.8}
-          fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="0.8"
-          animate={{ cy: [47 - i*6, 33 - i*6], opacity: [0.25, 0] }}
-          transition={{ duration: 2.2, repeat: Infinity, delay: i * 0.75, ease: "easeOut" }} />
+      {/* ── Room divider lines on floor ── */}
+      {/* Vertical dividers (x = -1 and x = 1) */}
+      {[-1, 1].map((x) => (
+        <line key={`vd-${x}`}
+          x1={iso(x, -WY)[0].toFixed(1)} y1={iso(x, -WY)[1].toFixed(1)}
+          x2={iso(x, WY)[0].toFixed(1)} y2={iso(x, WY)[1].toFixed(1)}
+          stroke="rgba(255,255,255,0.08)" strokeWidth="0.8"
+        />
       ))}
-
-      {/* ── Roof windows ── */}
-      <rect x="116" y="108" width="26" height="20" rx="2" fill="#090d14" stroke="#4338ca" strokeWidth="0.9" />
-      <rect x="116" y="108" width="26" height="20" rx="2" fill="rgba(139,92,246,0.12)" />
-      <line x1="129" y1="108" x2="129" y2="128" stroke="#4338ca" strokeWidth="0.6" opacity="0.5" />
-      <line x1="116" y1="118" x2="142" y2="118" stroke="#4338ca" strokeWidth="0.6" opacity="0.5" />
-
-      <rect x="258" y="108" width="26" height="20" rx="2" fill="#090d14" stroke="#4338ca" strokeWidth="0.9" />
-      <rect x="258" y="108" width="26" height="20" rx="2" fill="rgba(139,92,246,0.12)" />
-      <line x1="271" y1="108" x2="271" y2="128" stroke="#4338ca" strokeWidth="0.6" opacity="0.5" />
-      <line x1="258" y1="118" x2="284" y2="118" stroke="#4338ca" strokeWidth="0.6" opacity="0.5" />
-
-      {/* ── Front windows ── */}
-      <rect x="116" y="205" width="30" height="24" rx="2" fill="#090d14" stroke="#2d3748" strokeWidth="0.9" />
-      <line x1="131" y1="205" x2="131" y2="229" stroke="#2d3748" strokeWidth="0.7" />
-      <line x1="116" y1="217" x2="146" y2="217" stroke="#2d3748" strokeWidth="0.7" />
-
-      <rect x="254" y="205" width="30" height="24" rx="2" fill="#090d14" stroke="#2d3748" strokeWidth="0.9" />
-      <line x1="269" y1="205" x2="269" y2="229" stroke="#2d3748" strokeWidth="0.7" />
-      <line x1="254" y1="217" x2="284" y2="217" stroke="#2d3748" strokeWidth="0.7" />
-
-      {/* ── Door ── */}
-      <rect x="184" y="238" width="32" height="37" rx="3"
-        fill="#140e24" stroke="#4338ca" strokeWidth="1" />
-      <circle cx="211" cy="257" r="2" fill="#6d28d9" />
-      <path d="M184,250 Q200,241 216,250" fill="none" stroke="#4338ca" strokeWidth="0.7" opacity="0.4" />
-
-      {/* ── TV ── */}
-      {/* Stand */}
-      <rect x="193" y="260" width="14" height="3" rx="1" fill="#1f2937" />
-      <rect x="190" y="263" width="20" height="3" rx="1" fill="#111827" />
-      {/* Screen border glow */}
-      <motion.rect x="178" y="236" width="44" height="28" rx="3"
-        fill="#080c18"
-        stroke={tvColor} strokeWidth="1.8"
-        animate={{ stroke: tvColor }}
-        transition={{ duration: 0.35 }}
-        filter="url(#tvGlow)"
-        style={{ cursor: "pointer" }} onClick={onTVClick}
+      {/* Horizontal divider (y = 0) */}
+      <line
+        x1={iso(-WX, 0)[0].toFixed(1)} y1={iso(-WX, 0)[1].toFixed(1)}
+        x2={iso(WX, 0)[0].toFixed(1)} y2={iso(WX, 0)[1].toFixed(1)}
+        stroke="rgba(255,255,255,0.08)" strokeWidth="0.8"
       />
-      {/* Screen fill */}
-      <motion.rect x="179" y="237" width="42" height="26" rx="2"
-        fill={tvColor}
-        animate={{ fillOpacity: tvFlash ? 0.28 : 0.1, fill: tvColor }}
-        transition={{ duration: 0.25 }}
-        style={{ cursor: "pointer" }} onClick={onTVClick} pointerEvents="all"
+
+      {/* ── Left wall (x = -3, faces viewer-left) ── */}
+      <polygon
+        points={pts([-WX,-WY,0],[-WX,WY,0],[-WX,WY,WZ],[-WX,-WY,WZ])}
+        fill="#101825" stroke="#1e293b" strokeWidth="1"
+        filter="url(#wallShadow)"
       />
-      {/* Label */}
-      <text x="200" y="253" textAnchor="middle" fontSize="5.8" fontWeight="bold"
-        fill="white" opacity="0.92"
-        style={{ cursor: "pointer", fontFamily: "system-ui,sans-serif", letterSpacing: "0.4px" }}
-        onClick={onTVClick} pointerEvents="all">
-        Enter HQ
-      </text>
+      {/* Left wall top edge glow */}
+      <line
+        x1={iso(-WX,-WY,WZ)[0].toFixed(1)} y1={iso(-WX,-WY,WZ)[1].toFixed(1)}
+        x2={iso(-WX,WY,WZ)[0].toFixed(1)} y2={iso(-WX,WY,WZ)[1].toFixed(1)}
+        stroke="#4338ca" strokeWidth="0.8" opacity="0.4"
+      />
 
-      {/* ── Room color overlays ── */}
-      {ROOM_ZONES.map((zone) => {
-        const raw = getMemberForRoom(zone.id, members);
-        const memberArr = Array.isArray(raw) ? raw : raw ? [raw] : [];
-        const pm = memberArr[0];
-        if (!pm) return null;
-        const color = MEMBER_COLORS[pm.color] || MEMBER_COLORS.purple;
-        const isHovered = hoveredRoom === zone.id;
+      {/* ── Right wall (x = 3, faces viewer-right) ── */}
+      <polygon
+        points={pts([WX,-WY,0],[WX,WY,0],[WX,WY,WZ],[WX,-WY,WZ])}
+        fill="#0c1220" stroke="#1e293b" strokeWidth="1"
+        filter="url(#wallShadow)"
+      />
+      <line
+        x1={iso(WX,-WY,WZ)[0].toFixed(1)} y1={iso(WX,-WY,WZ)[1].toFixed(1)}
+        x2={iso(WX,WY,WZ)[0].toFixed(1)} y2={iso(WX,WY,WZ)[1].toFixed(1)}
+        stroke="#4338ca" strokeWidth="0.8" opacity="0.4"
+      />
+
+      {/* ── Front wall (y = -2, faces viewer-front) ── */}
+      <polygon
+        points={pts([-WX,-WY,0],[WX,-WY,0],[WX,-WY,WZ],[-WX,-WY,WZ])}
+        fill="#131d2e" stroke="#1e293b" strokeWidth="1"
+      />
+
+      {/* Front wall windows */}
+      {[-1.8, 1.8].map((wx, i) => {
+        const [sx, sy] = iso(wx, -WY, 1.4);
         return (
-          <polygon key={zone.id + "-fill"}
-            points={zone.points}
-            fill={color.hex}
-            fillOpacity={isHovered ? 0.38 : 0.22}
-            stroke={color.hex}
-            strokeWidth={isHovered ? 2 : 1}
-            strokeOpacity={isHovered ? 1 : 0.5}
-            filter={isHovered ? "url(#roomGlow)" : undefined}
-            style={{ transition: "fill-opacity 0.18s, stroke-width 0.18s", pointerEvents: "none" }}
-          />
-        );
-      })}
-
-      {/* ── Hit zones ── */}
-      {ROOM_ZONES.map((zone) => {
-        const raw = getMemberForRoom(zone.id, members);
-        const memberArr = Array.isArray(raw) ? raw : raw ? [raw] : [];
-        const pm = memberArr[0];
-        return (
-          <polygon key={zone.id + "-hit"}
-            points={zone.points}
-            fill="transparent" stroke="transparent" strokeWidth="6"
-            style={{ cursor: pm ? "pointer" : "default" }}
-            onClick={() => pm && onRoomClick(memberArr[0])}
-            onMouseEnter={() => pm && setHoveredRoom(zone.id)}
-            onMouseLeave={() => setHoveredRoom(null)}
-          />
-        );
-      })}
-
-      {/* ── Room labels ── */}
-      {ROOM_ZONES.map((zone) => {
-        const raw = getMemberForRoom(zone.id, members);
-        const memberArr = Array.isArray(raw) ? raw : raw ? [raw] : [];
-        const pm = memberArr[0];
-        if (!pm) return null;
-
-        const color = MEMBER_COLORS[pm.color] || MEMBER_COLORS.purple;
-        const status = memberStatuses[pm.id];
-        const isTop = zone.id === "rasya" || zone.id === "dad";
-        const isSide = zone.id === "mom" || zone.id === "radif-rania";
-        const emojiSize = isTop ? "14" : isSide ? "10" : "12";
-        const nameSize = isTop ? "6.5" : isSide ? "5" : "6";
-        const emojiY = zone.labelY - (isTop ? 10 : isSide ? 8 : 9);
-        const nameY = zone.labelY + (isTop ? 6 : isSide ? 4 : 5);
-        const badgeY = nameY + (isTop ? 5 : 4);
-
-        return (
-          <g key={zone.id + "-label"} style={{ pointerEvents: "none" }}>
-            <text x={zone.labelX} y={emojiY} textAnchor="middle"
-              fontSize={emojiSize} style={{ fontFamily: "system-ui" }}>
-              {pm.emoji || pm.name[0]}
-              {memberArr[1] ? (isSide ? "" : " " + (memberArr[1].emoji || memberArr[1].name[0])) : ""}
-            </text>
-            <text x={zone.labelX} y={nameY} textAnchor="middle"
-              fontSize={nameSize} fontWeight="700" fill={color.hex}
-              style={{ fontFamily: "system-ui,sans-serif" }}>
-              {pm.name}{memberArr[1] ? " & " + memberArr[1].name : ""}
-            </text>
-            {status && (
-              <>
-                <rect
-                  x={zone.labelX - 15} y={badgeY}
-                  width="30" height="9" rx="4.5"
-                  fill={status === "busy" ? "#7f1d1d" : status === "done" ? "#064e3b" : "#1e2533"}
-                  opacity="0.95" />
-                <text x={zone.labelX} y={badgeY + 6.5} textAnchor="middle"
-                  fontSize="4.8" fontWeight="700"
-                  fill={status === "busy" ? "#fca5a5" : status === "done" ? "#6ee7b7" : "#94a3b8"}
-                  style={{ fontFamily: "system-ui,sans-serif" }}>
-                  {status === "busy" ? "Busy" : status === "done" ? "✓ Done" : "Home"}
-                </text>
-              </>
-            )}
+          <g key={`fw-${i}`}>
+            <rect x={(sx - 10).toFixed(1)} y={(sy - 9).toFixed(1)} width="20" height="15" rx="2"
+              fill="#090d14" stroke="#4338ca" strokeWidth="0.8" />
+            <rect x={(sx - 10).toFixed(1)} y={(sy - 9).toFixed(1)} width="20" height="15" rx="2"
+              fill="#8B5CF6" opacity="0.06" />
+            <line x1={sx.toFixed(1)} y1={(sy - 9).toFixed(1)} x2={sx.toFixed(1)} y2={(sy + 6).toFixed(1)}
+              stroke="#4338ca" strokeWidth="0.5" opacity="0.4" />
+            <line x1={(sx - 10).toFixed(1)} y1={(sy - 2).toFixed(1)} x2={(sx + 10).toFixed(1)} y2={(sy - 2).toFixed(1)}
+              stroke="#4338ca" strokeWidth="0.5" opacity="0.4" />
           </g>
         );
       })}
+
+      {/* Front wall door */}
+      {(() => {
+        const [dx, dy] = iso(0, -WY, 0);
+        return (
+          <g>
+            <rect x={(dx - 9).toFixed(1)} y={(dy - 22).toFixed(1)} width="18" height="22" rx="2"
+              fill="#0e1628" stroke="#4338ca" strokeWidth="1" />
+            <circle cx={(dx + 5).toFixed(1)} cy={(dy - 11).toFixed(1)} r="2" fill="#6d28d9" />
+          </g>
+        );
+      })()}
+
+      {/* ── Back wall top edge (visible above roof) ── */}
+      <line
+        x1={iso(-WX,WY,WZ)[0].toFixed(1)} y1={iso(-WX,WY,WZ)[1].toFixed(1)}
+        x2={iso(WX,WY,WZ)[0].toFixed(1)} y2={iso(WX,WY,WZ)[1].toFixed(1)}
+        stroke="#1e293b" strokeWidth="1"
+      />
+
+      {/* ── Roof ── */}
+      {/* Left face (viewer-left) */}
+      <polygon
+        points={pts([-WX,-WY,WZ],[-WX,WY,WZ],[0,WY,RZ],[0,-WY,RZ])}
+        fill="#1a1d3a" stroke="#312e81" strokeWidth="1.2"
+        filter="url(#roofGlow)"
+      />
+      {/* Right face (viewer-right) */}
+      <polygon
+        points={pts([WX,-WY,WZ],[WX,WY,WZ],[0,WY,RZ],[0,-WY,RZ])}
+        fill="#15183a" stroke="#312e81" strokeWidth="1.2"
+      />
+      {/* Ridge line */}
+      <line
+        x1={iso(0,-WY,RZ)[0].toFixed(1)} y1={iso(0,-WY,RZ)[1].toFixed(1)}
+        x2={iso(0,WY,RZ)[0].toFixed(1)} y2={iso(0,WY,RZ)[1].toFixed(1)}
+        stroke="#6d5ce7" strokeWidth="1.2" opacity="0.7"
+      />
+
+      {/* Roof accent lines */}
+      {[-WX, WX].map((rx, i) => (
+        <line key={`ra-${i}`}
+          x1={iso(rx,-WY,WZ)[0].toFixed(1)} y1={iso(rx,-WY,WZ)[1].toFixed(1)}
+          x2={iso(0,-WY,RZ)[0].toFixed(1)} y2={iso(0,-WY,RZ)[1].toFixed(1)}
+          stroke="#4338ca" strokeWidth="0.6" opacity="0.35"
+        />
+      ))}
+
+      {/* ── Chimney ── */}
+      {(() => {
+        const cx1 = -0.8, cy1 = -1.0;
+        return (
+          <g>
+            <polygon points={pts([cx1,cy1,RZ-0.5],[cx1+0.4,cy1,RZ-0.5],[cx1+0.4,cy1,RZ+0.5],[cx1,cy1,RZ+0.5])}
+              fill="#1e1b4b" stroke="#4338ca" strokeWidth="0.7" />
+            <polygon points={pts([cx1-0.05,cy1-0.1,RZ+0.5],[cx1+0.45,cy1-0.1,RZ+0.5],[cx1+0.45,cy1+0.1,RZ+0.5],[cx1-0.05,cy1+0.1,RZ+0.5])}
+              fill="#2d2a6e" />
+            {[0,1,2].map((i) => {
+              const [smx, smy] = iso(cx1 + 0.2, cy1, RZ + 0.6 + i * 0.2);
+              return (
+                <motion.circle key={i} cx={smx.toFixed(1)} cy={smy.toFixed(1)} r={2 + i * 1.5}
+                  fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.8"
+                  animate={{ cy: [smy, smy - 14 - i * 5], opacity: [0.3, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
+                />
+              );
+            })}
+          </g>
+        );
+      })()}
+
+      {/* ── Rania: attic loft label on roof ── */}
+      {(() => {
+        const rania = getMemberForRoom("rania", members);
+        if (!rania) return null;
+        const color = MEMBER_COLORS[rania.color]?.hex || "#EAB308";
+        const [lx, ly] = iso(1.5, 0.5, WZ + 0.3);
+        return (
+          <g style={{ pointerEvents: "none" }}>
+            {/* Attic window on right roof face */}
+            {(() => {
+              const [wx, wy] = iso(1.8, 0.5, WZ + 0.8);
+              return (
+                <g>
+                  <rect x={(wx - 8).toFixed(1)} y={(wy - 7).toFixed(1)} width="16" height="12" rx="2"
+                    fill="#090d14" stroke={color} strokeWidth="0.8" />
+                  <rect x={(wx - 8).toFixed(1)} y={(wy - 7).toFixed(1)} width="16" height="12" rx="2"
+                    fill={color} fillOpacity="0.1" />
+                </g>
+              );
+            })()}
+            {/* Label */}
+            <text x={lx.toFixed(1)} y={(ly - 8).toFixed(1)}
+              textAnchor="middle" fontSize="9" style={{ fontFamily: "system-ui" }}>
+              {rania.emoji || "🌙"}
+            </text>
+            <text x={lx.toFixed(1)} y={(ly + 2).toFixed(1)}
+              textAnchor="middle" fontSize="5" fontWeight="700" fill={color}
+              style={{ fontFamily: "system-ui,sans-serif" }}>
+              {rania.name}
+            </text>
+            <text x={lx.toFixed(1)} y={(ly + 9).toFixed(1)}
+              textAnchor="middle" fontSize="4" fill={color} opacity="0.6"
+              style={{ fontFamily: "system-ui,sans-serif" }}>
+              Attic loft
+            </text>
+          </g>
+        );
+      })()}
+
+      {/* ── Room labels ── */}
+      {ROOMS.map((room) => {
+        const member = getMemberForRoom(room.id, members);
+        const color = member ? (MEMBER_COLORS[member.color]?.hex || room.defaultColor) : room.defaultColor;
+        const status = member ? memberStatuses[member.id] : null;
+        return (
+          <RoomLabel key={room.id + "-lbl"}
+            room={room} member={member} memberColor={color} status={status} />
+        );
+      })}
+
+      {/* ── TV screen in living room ── */}
+      <TVScreen onTVClick={onTVClick} tvColor={tvColor} tvFlash={tvFlash} />
     </svg>
   );
 }
 
-// ─── Centered popup wrapper (immune to Framer transform conflicts) ─────────────
+// ─── Centered popup helper (flex-centering, immune to Framer transform) ────────
 function CenteredPopup({ children, onClose }) {
   return (
     <>
-      <div
-        style={{
-          position: "fixed", inset: 0, zIndex: 60,
-          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
-        }}
-        onClick={onClose}
-      />
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 60,
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+      }} onClick={onClose} />
       <div style={{
         position: "fixed", inset: 0, zIndex: 61,
         display: "flex", alignItems: "flex-end", justifyContent: "center",
-        padding: "0 0 32px",
-        pointerEvents: "none",
+        paddingBottom: 28, pointerEvents: "none",
       }}>
         <div style={{ pointerEvents: "auto", width: "85vw", maxWidth: 340 }}>
           {children}
@@ -328,12 +684,9 @@ export default function IsometricHome() {
     ]).then(([events, chores]) => {
       const statuses = {};
       for (const m of members) {
-        const hasTodayEvent = events.some((e) => {
-          const d = e.date || e.start_date || e.event_date || "";
-          return d.slice(0, 10) === today;
-        });
-        const hasDoneChore = chores.some((c) => c.completed && c.assigned_to === m.id);
-        statuses[m.id] = hasTodayEvent ? "busy" : hasDoneChore ? "done" : "home";
+        const hasBusy = events.some((e) => (e.date || e.start_date || "").slice(0, 10) === today);
+        const hasDone = chores.some((c) => c.completed && c.assigned_to === m.id);
+        statuses[m.id] = hasBusy ? "busy" : hasDone ? "done" : "home";
       }
       setMemberStatuses(statuses);
     }).catch(() => {});
@@ -347,38 +700,34 @@ export default function IsometricHome() {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0,
-        background: "#0d0d14",
-        display: "flex", flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "#0d0d14",
+      display: "flex", flexDirection: "column",
+      overflow: "hidden",
+    }}>
       <StarField />
 
       {/* Top bar */}
       <header style={{
-        position: "relative", zIndex: 10,
+        position: "relative", zIndex: 10, flexShrink: 0,
         display: "flex", alignItems: "center",
-        padding: "10px 16px",
-        flexShrink: 0,
+        padding: "10px 14px",
       }}>
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => setSidebarOpen(true)}
           style={{
             width: 36, height: 36, borderRadius: 10, border: "none",
-            background: "rgba(255,255,255,0.08)", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(255,255,255,0.07)", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
-          <Menu style={{ width: 18, height: 18, color: "rgba(255,255,255,0.7)" }} />
+          <Menu style={{ width: 18, height: 18, color: "rgba(255,255,255,0.65)" }} />
         </motion.button>
 
         <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
           <span style={{
             fontWeight: 700, fontSize: 15,
             background: "linear-gradient(135deg,#fff 0%,#c4b5fd 100%)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
           }}>
             🏠 Family HQ
           </span>
@@ -387,39 +736,38 @@ export default function IsometricHome() {
         {member ? (
           <motion.button whileTap={{ scale: 0.85 }} onClick={() => navigate("/select")}
             style={{
-              width: 36, height: 36, borderRadius: "50%", border: "none",
+              width: 36, height: 36, borderRadius: "50%", border: "none", flexShrink: 0,
               background: memberColor.hex, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "white", fontSize: 14, fontWeight: 700,
-              boxShadow: `0 0 12px ${memberColor.hex}60`,
+              color: "white", fontSize: 15, fontWeight: 700,
+              boxShadow: `0 0 14px ${memberColor.hex}55`,
             }}>
             {member.emoji || member.name[0]}
           </motion.button>
-        ) : <div style={{ width: 36, height: 36 }} />}
+        ) : <div style={{ width: 36, height: 36, flexShrink: 0 }} />}
       </header>
 
-      {/* House — fills all remaining space */}
+      {/* Hint */}
+      <p style={{
+        position: "relative", zIndex: 10, flexShrink: 0,
+        textAlign: "center", fontSize: 9, letterSpacing: "0.14em",
+        textTransform: "uppercase", color: "rgba(255,255,255,0.22)",
+        margin: "0 0 2px",
+      }}>
+        tap a room · tap tv to enter
+      </p>
+
+      {/* House — fills remaining space */}
       <div style={{
         position: "relative", zIndex: 10,
-        flex: 1,
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: "0 8px 8px",
-        minHeight: 0,
+        flex: 1, minHeight: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "0 4px 4px",
       }}>
-        <p style={{
-          color: "rgba(255,255,255,0.3)", fontSize: 10,
-          letterSpacing: "0.15em", textTransform: "uppercase",
-          marginBottom: 6, flexShrink: 0,
-        }}>
-          tap a room · TV enters dashboard
-        </p>
-
-        {/* Floating wrapper — takes all remaining height */}
         <motion.div
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-          style={{ width: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center" }}
+          animate={{ y: [0, -4, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          style={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}
         >
           <IsometricHouse
             members={members}
@@ -428,22 +776,6 @@ export default function IsometricHome() {
             onTVClick={() => navigate("/dashboard")}
           />
         </motion.div>
-
-        {/* Enter HQ button below house */}
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate("/dashboard")}
-          style={{
-            flexShrink: 0,
-            marginTop: 8,
-            padding: "10px 28px",
-            borderRadius: 999, border: "none", cursor: "pointer",
-            background: "linear-gradient(135deg,#8B5CF6,#EC4899)",
-            color: "white", fontSize: 13, fontWeight: 700,
-            boxShadow: "0 4px 20px rgba(139,92,246,0.4)",
-          }}>
-          📺 Enter HQ Dashboard
-        </motion.button>
       </div>
 
       {/* Member popup */}
@@ -451,81 +783,64 @@ export default function IsometricHome() {
         {selectedMember && (
           <CenteredPopup onClose={() => setSelectedMember(null)}>
             <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.93 }}
+              initial={{ opacity: 0, y: 28, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 30, scale: 0.93 }}
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              exit={{ opacity: 0, y: 28, scale: 0.94 }}
+              transition={{ type: "spring", stiffness: 400, damping: 32 }}
             >
               {(() => {
                 const color = MEMBER_COLORS[selectedMember.color] || MEMBER_COLORS.purple;
                 const status = memberStatuses[selectedMember.id];
                 return (
                   <div style={{
-                    borderRadius: 24, padding: 20,
-                    background: "rgba(12,10,28,0.98)",
-                    border: `1px solid ${color.hex}50`,
-                    boxShadow: `0 0 40px ${color.hex}25, 0 20px 60px rgba(0,0,0,0.6)`,
+                    borderRadius: 22, padding: "18px 18px 16px",
+                    background: "rgba(10,8,24,0.98)",
+                    border: `1px solid ${color.hex}45`,
+                    boxShadow: `0 0 40px ${color.hex}20, 0 20px 60px rgba(0,0,0,0.7)`,
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                       <div style={{
-                        width: 56, height: 56, borderRadius: 16, flexShrink: 0,
-                        background: `${color.hex}22`,
-                        boxShadow: `0 0 18px ${color.hex}40`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 26,
+                        width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                        background: `${color.hex}20`, boxShadow: `0 0 16px ${color.hex}35`,
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
                       }}>
                         {selectedMember.emoji || selectedMember.name[0]}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ color: "white", fontWeight: 700, fontSize: 16, margin: 0 }}>
+                        <p style={{ color: "white", fontWeight: 700, fontSize: 16, margin: "0 0 2px" }}>
                           {selectedMember.name}
                         </p>
-                        <p style={{ color: color.hex, fontSize: 12, margin: "2px 0 6px" }}>
-                          {selectedMember.role}
-                        </p>
+                        <p style={{ color: color.hex, fontSize: 11, margin: "0 0 6px" }}>{selectedMember.role}</p>
                         <span style={{
-                          display: "inline-block", padding: "2px 10px", borderRadius: 999,
-                          fontSize: 11, fontWeight: 700,
-                          background: status === "busy" ? "rgba(127,29,29,0.6)"
-                            : status === "done" ? "rgba(6,78,59,0.6)" : "rgba(30,37,51,0.6)",
-                          color: status === "busy" ? "#fca5a5"
-                            : status === "done" ? "#6ee7b7" : "#94a3b8",
+                          display: "inline-block", padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700,
+                          background: status === "busy" ? "rgba(127,29,29,0.55)" : status === "done" ? "rgba(6,78,59,0.55)" : "rgba(30,37,51,0.55)",
+                          color: status === "busy" ? "#fca5a5" : status === "done" ? "#6ee7b7" : "#94a3b8",
                         }}>
-                          {status === "busy" ? "📅 Busy today" : status === "done" ? "✅ Chores done" : "🏠 Home"}
+                          {status === "busy" ? "📅 Busy" : status === "done" ? "✅ Done" : "🏠 Home"}
                         </span>
                       </div>
                     </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 16 }}>
-                      {[
-                        { label: "XP", value: selectedMember.xp ?? 0 },
-                        { label: "Streak 🔥", value: selectedMember.streak ?? 0 },
-                        { label: "Level", value: selectedMember.level ?? 1 },
-                      ].map((stat) => (
-                        <div key={stat.label} style={{ textAlign: "center" }}>
-                          <p style={{ color: "white", fontWeight: 700, fontSize: 18, margin: 0 }}>{stat.value}</p>
-                          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, margin: 0 }}>{stat.label}</p>
+                    <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 14 }}>
+                      {[["XP", selectedMember.xp ?? 0], ["Streak 🔥", selectedMember.streak ?? 0], ["Level", selectedMember.level ?? 1]].map(([l, v]) => (
+                        <div key={l} style={{ textAlign: "center" }}>
+                          <p style={{ color: "white", fontWeight: 700, fontSize: 17, margin: 0 }}>{v}</p>
+                          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, margin: 0 }}>{l}</p>
                         </div>
                       ))}
                     </div>
-
-                    <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ display: "flex", gap: 9 }}>
                       <button onClick={() => setSelectedMember(null)} style={{
-                        flex: 1, padding: "11px 0", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)",
-                        background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)",
-                        fontSize: 13, fontWeight: 600, cursor: "pointer",
-                      }}>
-                        Close
-                      </button>
+                        flex: 1, padding: "10px 0", borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.07)",
+                        background: "rgba(255,255,255,0.04)",
+                        color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                      }}>Close</button>
                       <motion.button whileTap={{ scale: 0.96 }}
-                        onClick={() => handleSwitchToMember(selectedMember)}
-                        style={{
-                          flex: 1, padding: "11px 0", borderRadius: 16, border: "none",
-                          background: `linear-gradient(135deg,${color.hex},${color.hex}bb)`,
-                          color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                        }}>
-                        Switch →
-                      </motion.button>
+                        onClick={() => handleSwitchToMember(selectedMember)} style={{
+                          flex: 1, padding: "10px 0", borderRadius: 14, border: "none",
+                          background: `linear-gradient(135deg,${color.hex},${color.hex}aa)`,
+                          color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        }}>Switch →</motion.button>
                     </div>
                   </div>
                 );
@@ -549,68 +864,52 @@ export default function IsometricHome() {
               transition={{ type: "spring", stiffness: 350, damping: 35 }}
               style={{
                 position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 90,
-                width: 264, display: "flex", flexDirection: "column",
+                width: 256, display: "flex", flexDirection: "column",
                 background: "rgba(10,10,18,0.97)",
-                borderRight: `1px solid ${memberColor.hex}30`,
+                borderRight: `1px solid ${memberColor.hex}28`,
                 paddingTop: "env(safe-area-inset-top)",
                 paddingBottom: "env(safe-area-inset-bottom)",
               }}
             >
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 11 }}>
                 {member && (
                   <div style={{
-                    width: 40, height: 40, borderRadius: "50%",
-                    background: memberColor.hex, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "white", fontWeight: 700, fontSize: 16,
-                  }}>
-                    {member.emoji || member.name[0]}
-                  </div>
+                    width: 38, height: 38, borderRadius: "50%", background: memberColor.hex, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15,
+                  }}>{member.emoji || member.name[0]}</div>
                 )}
                 <div>
                   <p style={{ color: "white", fontWeight: 600, fontSize: 13, margin: 0 }}>{member?.name ?? "Family HQ"}</p>
-                  <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, margin: 0 }}>{member?.role ?? ""}</p>
+                  <p style={{ color: "rgba(255,255,255,0.32)", fontSize: 11, margin: 0 }}>{member?.role ?? ""}</p>
                 </div>
               </div>
-              <nav style={{ flex: 1, padding: "12px", overflowY: "auto" }}>
+              <nav style={{ flex: 1, padding: 10, overflowY: "auto" }}>
                 {[
-                  { label: "🏠 HQ Home", path: "/home" },
-                  { label: "📊 Dashboard", path: "/dashboard" },
-                  { label: "📅 Calendar", path: "/calendar" },
-                  { label: "✅ Chores", path: "/chores" },
-                  { label: "🍽️ Meals", path: "/meals" },
-                  { label: "💰 Budget", path: "/budget" },
-                  { label: "📌 Board", path: "/noticeboard" },
-                  { label: "🎯 Goals", path: "/goals" },
-                  { label: "🎁 Rewards", path: "/rewards" },
-                  { label: "📸 Moments", path: "/moments" },
-                  { label: "📖 Guide", path: "/guide" },
-                ].map((item) => (
-                  <button key={item.path}
-                    onClick={() => { setSidebarOpen(false); navigate(item.path); }}
+                  ["🏠 HQ Home", "/home"], ["📊 Dashboard", "/dashboard"],
+                  ["📅 Calendar", "/calendar"], ["✅ Chores", "/chores"],
+                  ["🍽️ Meals", "/meals"], ["💰 Budget", "/budget"],
+                  ["📌 Board", "/noticeboard"], ["🎯 Goals", "/goals"],
+                  ["🎁 Rewards", "/rewards"], ["📸 Moments", "/moments"],
+                  ["📖 Guide", "/guide"],
+                ].map(([label, path]) => (
+                  <button key={path}
+                    onClick={() => { setSidebarOpen(false); navigate(path); }}
                     style={{
-                      width: "100%", display: "flex", alignItems: "center",
-                      padding: "11px 16px", borderRadius: 12, border: "none",
-                      background: "transparent", color: "rgba(255,255,255,0.55)",
-                      fontSize: 13, fontWeight: 500, cursor: "pointer", textAlign: "left",
-                      marginBottom: 2,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "white"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
-                  >
-                    {item.label}
+                      width: "100%", display: "block", padding: "10px 14px",
+                      borderRadius: 10, border: "none", background: "transparent",
+                      color: "rgba(255,255,255,0.52)", fontSize: 13, fontWeight: 500,
+                      cursor: "pointer", textAlign: "left", marginBottom: 1,
+                    }}>
+                    {label}
                   </button>
                 ))}
               </nav>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: 12 }}>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: 10 }}>
                 <button onClick={() => { setSidebarOpen(false); navigate("/select"); }}
                   style={{
-                    width: "100%", padding: "10px 16px", borderRadius: 12, border: "none",
-                    background: "transparent", color: "rgba(255,255,255,0.4)",
-                    fontSize: 13, cursor: "pointer", textAlign: "left",
-                  }}>
-                  Switch Member
-                </button>
+                    width: "100%", padding: "9px 14px", borderRadius: 10, border: "none",
+                    background: "transparent", color: "rgba(255,255,255,0.35)", fontSize: 12, cursor: "pointer", textAlign: "left",
+                  }}>Switch Member</button>
               </div>
             </motion.aside>
           </>
