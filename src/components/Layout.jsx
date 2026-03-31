@@ -3,13 +3,14 @@ import OnboardingWizard from "@/components/OnboardingWizard";
 import XPPopup from "@/components/XPPopup";
 import LevelUpOverlay from "@/components/LevelUpOverlay";
 import FamilyPet from "@/components/FamilyPet";
-import { Sun, Moon, Home, Calendar, CheckSquare, Camera, Utensils, DollarSign, Pin, Target, Gift, HelpCircle, LogOut, DoorOpen, Menu } from "lucide-react";
+import { Sun, Moon, Home, Calendar, CheckSquare, Camera, Utensils, DollarSign, Pin, Target, Gift, HelpCircle, LogOut, DoorOpen, Menu, Building2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_COLORS, clearFamilySession } from "@/lib/familyStore";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
-  { path: "/dashboard", icon: Home, label: "Home" },
+  { path: "/home", icon: Building2, label: "HQ Home" },
+  { path: "/dashboard", icon: Home, label: "Dashboard" },
   { path: "/calendar", icon: Calendar, label: "Calendar" },
   { path: "/chores", icon: CheckSquare, label: "Chores" },
   { path: "/meals", icon: Utensils, label: "Meals" },

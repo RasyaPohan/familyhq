@@ -21,6 +21,7 @@ import GoalsPage from './pages/GoalsPage';
 import RewardsPage from './pages/RewardsPage';
 import GuidePage from './pages/GuidePage';
 import MomentsPage from './pages/MomentsPage';
+import IsometricHome from './pages/IsometricHome';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -53,6 +54,7 @@ const AuthenticatedApp = () => {
       <Route path="/join-hq" element={<JoinHQFlow />} />
       <Route path="/pin" element={<PinScreen />} />
       <Route path="/select" element={<FamilySelect />} />
+      <Route path="/home" element={<IsometricHome />} />
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/calendar" element={<CalendarPage />} />
