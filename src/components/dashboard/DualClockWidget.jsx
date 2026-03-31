@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
 
-function formatClock(date, offsetHours) {
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
-  const local = new Date(utcMs + offsetHours * 3600000);
-  let h = local.getHours();
-  const m = local.getMinutes();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+function formatClock(date, ianaTimezone) {
+  return date.toLocaleTimeString("en-US", {
+    timeZone: ianaTimezone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
-export default function DualClockWidget() {
+function tzLabel(ianaTimezone) {
+  // Extract a short abbreviation from the IANA zone name for display
+  const parts = ianaTimezone.split("/");
+  return parts[parts.length - 1].replace(/_/g, " ");
+}
+
+// Props: homeTimezone, awayTimezone, awayMemberName, awayMemberEmoji
+export default function DualClockWidget({ homeTimezone, awayTimezone, awayMemberName, awayMemberEmoji }) {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -18,21 +24,25 @@ export default function DualClockWidget() {
     return () => clearInterval(t);
   }, []);
 
-  const vancouver = formatClock(now, -7); // PDT UTC-7
-  const jakarta = formatClock(now, 7);    // WIB UTC+7
+  const homeTime = formatClock(now, homeTimezone);
+  const awayTime = formatClock(now, awayTimezone);
+  const homeLabel = tzLabel(homeTimezone);
+  const awayLabel = tzLabel(awayTimezone);
 
   return (
     <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex items-center justify-around gap-2">
       <div className="text-center">
-        <p className="text-xs text-muted-foreground mb-1">🇨🇦 Vancouver</p>
-        <p className="font-heading font-bold text-lg tabular-nums">{vancouver}</p>
-        <p className="text-[10px] text-muted-foreground">PDT (UTC-7)</p>
+        <p className="text-xs text-muted-foreground mb-1">🏠 Home</p>
+        <p className="font-heading font-bold text-lg tabular-nums">{homeTime}</p>
+        <p className="text-[10px] text-muted-foreground">{homeLabel}</p>
       </div>
       <div className="w-px h-10 bg-border" />
       <div className="text-center">
-        <p className="text-xs text-muted-foreground mb-1">🇮🇩 Jakarta</p>
-        <p className="font-heading font-bold text-lg tabular-nums">{jakarta}</p>
-        <p className="text-[10px] text-muted-foreground">WIB (UTC+7)</p>
+        <p className="text-xs text-muted-foreground mb-1">
+          {awayMemberEmoji || "✈️"} {awayMemberName}
+        </p>
+        <p className="font-heading font-bold text-lg tabular-nums">{awayTime}</p>
+        <p className="text-[10px] text-muted-foreground">{awayLabel}</p>
       </div>
     </div>
   );

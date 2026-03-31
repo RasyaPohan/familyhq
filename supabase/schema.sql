@@ -38,6 +38,8 @@ create table if not exists family_members (
   allowance_balance numeric(12,2) not null default 0,
   weekly_xp         integer not null default 0,
   week_start        date,
+  birthday          date,
+  timezone          text,
   created_at        timestamptz not null default now()
 );
 

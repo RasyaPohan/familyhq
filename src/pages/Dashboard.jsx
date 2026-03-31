@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { getActiveMember } from "@/lib/familyStore";
+import { getActiveMember, getFamilyCode } from "@/lib/familyStore";
+import { db } from "@/lib/db";
 import { Plus, Calendar, CheckSquare, Utensils, StickyNote, BookOpen, Camera, Gift } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import GreetingWidget from "@/components/dashboard/GreetingWidget";
 import TodayChoresWidget from "@/components/dashboard/TodayChoresWidget";
 import UpcomingEventsWidget from "@/components/dashboard/UpcomingEventsWidget";
@@ -13,7 +12,6 @@ import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import WeeklyLeaderboard from "@/components/dashboard/WeeklyLeaderboard";
 import BirthdayCountdownWidget from "@/components/dashboard/BirthdayCountdownWidget";
 import DualClockWidget from "@/components/dashboard/DualClockWidget";
-import { isRasya } from "@/lib/tzCurrency";
 
 const quickActions = [
   { label: "Add Event", emoji: "📅", path: "/calendar", icon: Calendar },
@@ -24,10 +22,37 @@ const quickActions = [
   { label: "Rewards Shop", emoji: "🎁", path: "/rewards", icon: Gift },
 ];
 
+// Detect the local IANA timezone of the browser
+const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 export default function Dashboard() {
   const member = getActiveMember();
+  const familyCode = getFamilyCode();
   const navigate = useNavigate();
   const [showQuick, setShowQuick] = useState(false);
+  const [clockConfig, setClockConfig] = useState(null); // { homeTimezone, awayTimezone, awayMemberName, awayMemberEmoji }
+
+  useEffect(() => {
+    if (!familyCode) return;
+    db.FamilyMember.filter({ family_code: familyCode }).then((members) => {
+      // Find members who have a different timezone set from the current device timezone
+      const awayMember = members.find(
+        m => m.timezone && m.timezone !== LOCAL_TZ
+      );
+      if (!awayMember) return;
+
+      // Find the "home" timezone — prefer a member without a custom tz, else use browser tz
+      const homeMember = members.find(m => !m.timezone || m.timezone === LOCAL_TZ);
+      const homeTimezone = homeMember?.timezone || LOCAL_TZ;
+
+      setClockConfig({
+        homeTimezone,
+        awayTimezone: awayMember.timezone,
+        awayMemberName: awayMember.name,
+        awayMemberEmoji: awayMember.emoji,
+      });
+    });
+  }, [familyCode]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -41,13 +66,20 @@ export default function Dashboard() {
           <BookOpen className="w-4 h-4 text-white" />
         </Link>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
         <TodayChoresWidget />
         <UpcomingEventsWidget />
         <DinnerWidget />
         <BirthdayCountdownWidget />
-        {isRasya(member) && <DualClockWidget />}
+        {clockConfig && (
+          <DualClockWidget
+            homeTimezone={clockConfig.homeTimezone}
+            awayTimezone={clockConfig.awayTimezone}
+            awayMemberName={clockConfig.awayMemberName}
+            awayMemberEmoji={clockConfig.awayMemberEmoji}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -56,7 +88,7 @@ export default function Dashboard() {
       </div>
 
       {/* Floating Quick Add Button */}
-      <div className="fixed right-6 z-40" style={{ bottom: "calc(5rem + env(safe-area-inset-bottom) + 20px)" }}>
+      <div className="fixed right-6 z-40" style={{ bottom: "calc(2rem + env(safe-area-inset-bottom))" }}>
         <AnimatePresence>
           {showQuick && (
             <motion.div

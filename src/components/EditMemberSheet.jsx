@@ -17,6 +17,7 @@ export default function EditMemberSheet({ member, open, onClose, onSaved, onDele
     color: member?.color || "purple",
     role: member?.role || "Kid",
     birthday: member?.birthday || "",
+    timezone: member?.timezone || "",
   });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -32,7 +33,8 @@ export default function EditMemberSheet({ member, open, onClose, onSaved, onDele
       emoji: form.emoji,
       color: form.color,
       role: form.role,
-      birthday: form.birthday,
+      birthday: form.birthday || null,
+      timezone: form.timezone || null,
     });
     setSaving(false);
     onSaved({ ...currentMember, ...form });
@@ -121,6 +123,33 @@ export default function EditMemberSheet({ member, open, onClose, onSaved, onDele
               onChange={e => setForm({ ...form, birthday: e.target.value })}
               disabled={!canEdit}
             />
+          </div>
+
+          {/* Timezone */}
+          <div>
+            <Label>Timezone 🌍</Label>
+            <Select value={form.timezone} onValueChange={v => setForm({ ...form, timezone: v })} disabled={!canEdit}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select timezone..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pacific/Auckland">🇳🇿 Auckland (NZST, UTC+13)</SelectItem>
+                <SelectItem value="Pacific/Auckland_DST">🇳🇿 Auckland (NZDT, UTC+13)</SelectItem>
+                <SelectItem value="Asia/Tokyo">🇯🇵 Tokyo (JST, UTC+9)</SelectItem>
+                <SelectItem value="Asia/Shanghai">🇨🇳 Beijing / Shanghai (CST, UTC+8)</SelectItem>
+                <SelectItem value="Asia/Jakarta">🇮🇩 Jakarta (WIB, UTC+7)</SelectItem>
+                <SelectItem value="Asia/Bangkok">🇹🇭 Bangkok (ICT, UTC+7)</SelectItem>
+                <SelectItem value="Asia/Kolkata">🇮🇳 Mumbai / Delhi (IST, UTC+5:30)</SelectItem>
+                <SelectItem value="Asia/Dubai">🇦🇪 Dubai (GST, UTC+4)</SelectItem>
+                <SelectItem value="Europe/London">🇬🇧 London (GMT/BST, UTC+0/+1)</SelectItem>
+                <SelectItem value="Europe/Paris">🇫🇷 Paris / Berlin (CET, UTC+1)</SelectItem>
+                <SelectItem value="America/Sao_Paulo">🇧🇷 São Paulo (BRT, UTC-3)</SelectItem>
+                <SelectItem value="America/New_York">🇺🇸 New York (ET, UTC-5/-4)</SelectItem>
+                <SelectItem value="America/Chicago">🇺🇸 Chicago (CT, UTC-6/-5)</SelectItem>
+                <SelectItem value="America/Denver">🇺🇸 Denver (MT, UTC-7/-6)</SelectItem>
+                <SelectItem value="America/Los_Angeles">🇺🇸 Los Angeles (PT, UTC-8/-7)</SelectItem>
+                <SelectItem value="America/Vancouver">🇨🇦 Vancouver (PT, UTC-8/-7)</SelectItem>
+                <SelectItem value="America/Toronto">🇨🇦 Toronto (ET, UTC-5/-4)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {canEdit && (
