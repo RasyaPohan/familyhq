@@ -235,6 +235,26 @@ function SleepingZzz() {
   );
 }
 
+// ─── Shared modal shell ───────────────────────────────────────────────────────
+function PetModal({ children, onClose }) {
+  return (
+    <div
+      className="relative rounded-3xl p-5 shadow-2xl"
+      style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.13)" }}
+    >
+      {/* X close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full transition-colors"
+        style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)", fontSize: "16px", lineHeight: 1 }}
+        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.16)"}
+        onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+      >×</button>
+      {children}
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 const PET_NAME_KEY = "hq_pet_name";
@@ -408,37 +428,46 @@ export default function FamilyPet() {
 
   return (
     <>
-      {/* Name prompt overlay */}
+      {/* ── Shared centered modal backdrop ── */}
+      <AnimatePresence>
+        {(showNamePrompt || showLongPress || bubble) && (
+          <motion.div
+            key="pet-backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[9800] bg-black/60 backdrop-blur-sm"
+            onClick={() => { setShowNamePrompt(false); setShowLongPress(false); setBubble(null); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Name prompt modal ── */}
       <AnimatePresence>
         {showNamePrompt && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[9800] bg-black/50 backdrop-blur-sm"
-              onClick={() => setShowNamePrompt(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: 20 }}
-              transition={{ type: "spring", stiffness: 350, damping: 28 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-[9810] rounded-3xl p-6 shadow-2xl"
-              style={{ background: "#1c1c2e", border: "1px solid rgba(255,255,255,0.12)" }}
-              onClick={e => e.stopPropagation()}
-            >
+          <motion.div
+            key="name-modal"
+            initial={{ opacity: 0, scale: 0.88, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.88, y: 24 }}
+            transition={{ type: "spring", stiffness: 360, damping: 28 }}
+            className="fixed z-[9810]"
+            style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(85vw, 360px)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <PetModal onClose={() => setShowNamePrompt(false)}>
               <div className="flex justify-center mb-3">
                 <KittenPet size={64} />
               </div>
               <p className="text-white font-heading font-bold text-lg text-center mb-1">A new friend appeared! 🐾</p>
-              <p className="text-white/50 text-sm text-center mb-4">What should your family call me?</p>
+              <p className="text-white/50 text-sm text-center mb-5">What should your family call me?</p>
               <input
                 autoFocus
                 value={nameInput}
                 onChange={e => setNameInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && savePetName()}
                 placeholder="Give me a name..."
-                className="w-full bg-white/10 text-white placeholder-white/30 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 mb-3"
-                style={{ "--tw-ring-color": "#8B5CF6" }}
+                className="w-full bg-white/10 text-white placeholder-white/30 rounded-xl px-4 py-3 text-sm outline-none mb-3"
+                style={{ border: "1px solid rgba(255,255,255,0.15)", fontSize: "15px" }}
               />
               <button
                 onClick={savePetName}
@@ -448,43 +477,39 @@ export default function FamilyPet() {
               >
                 Nice to meet you! 🤝
               </button>
-            </motion.div>
-          </>
+            </PetModal>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Long press info panel */}
+      {/* ── Long-press info modal ── */}
       <AnimatePresence>
         {showLongPress && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[9800] bg-black/50"
-              onClick={() => setShowLongPress(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 380, damping: 28 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9810] w-72 rounded-3xl p-5 shadow-2xl"
-              style={{ background: "#1c1c2e", border: "1px solid rgba(255,255,255,0.12)" }}
-              onClick={e => e.stopPropagation()}
-            >
+          <motion.div
+            key="info-modal"
+            initial={{ opacity: 0, scale: 0.88, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.88, y: 24 }}
+            transition={{ type: "spring", stiffness: 360, damping: 28 }}
+            className="fixed z-[9810]"
+            style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(85vw, 320px)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <PetModal onClose={() => setShowLongPress(false)}>
               <div className="flex justify-center mb-3">
-                {stage.id === "egg" && <EggPet size={52} />}
-                {stage.id === "kitten" && <KittenPet size={52} />}
-                {stage.id === "cat" && <CatPet size={52} />}
-                {stage.id === "happy_cat" && <HappyCatPet size={52} />}
-                {stage.id === "legend" && <LegendCatPet size={52} />}
+                {stage.id === "egg"       && <EggPet size={56} />}
+                {stage.id === "kitten"    && <KittenPet size={56} />}
+                {stage.id === "cat"       && <CatPet size={56} />}
+                {stage.id === "happy_cat" && <HappyCatPet size={56} />}
+                {stage.id === "legend"    && <LegendCatPet size={56} />}
               </div>
               <p className="text-white font-heading font-bold text-center text-base mb-0.5">
                 {petName || "Your Pet"} — {stage.label}
               </p>
-              <p className="text-white/50 text-xs text-center mb-3">{totalXp} total family XP</p>
+              <p className="text-white/50 text-sm text-center mb-4">{totalXp} total family XP</p>
               {stage.nextXp ? (
                 <>
-                  <div className="w-full bg-white/10 rounded-full h-2 mb-1">
+                  <div className="w-full bg-white/10 rounded-full h-2 mb-2">
                     <div
                       className="h-2 rounded-full"
                       style={{
@@ -493,26 +518,51 @@ export default function FamilyPet() {
                       }}
                     />
                   </div>
-                  <p className="text-white/40 text-[11px] text-center">
+                  <p className="text-white/40 text-xs text-center">
                     {stage.nextXp - totalXp} XP until next evolution
                   </p>
                 </>
               ) : (
-                <p className="text-yellow-400 text-xs text-center font-semibold">👑 Max evolution reached!</p>
+                <p className="text-yellow-400 text-sm text-center font-semibold">👑 Max evolution reached!</p>
               )}
-              <button
-                onClick={() => setShowLongPress(false)}
-                className="mt-4 w-full py-2 rounded-xl text-white/60 text-sm hover:text-white/80 transition-colors"
-                style={{ background: "rgba(255,255,255,0.06)" }}
-              >
-                Close
-              </button>
-            </motion.div>
-          </>
+            </PetModal>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* The pet widget — fixed to bottom-right, safe-area aware */}
+      {/* ── Speech bubble modal ── */}
+      <AnimatePresence>
+        {bubble && (
+          <motion.div
+            key="bubble-modal"
+            initial={{ opacity: 0, scale: 0.88, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.88, y: 24 }}
+            transition={{ type: "spring", stiffness: 360, damping: 28 }}
+            className="fixed z-[9810]"
+            style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(85vw, 300px)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <PetModal onClose={() => setBubble(null)}>
+              <div className="flex justify-center mb-3">
+                {stage.id === "egg"       && <EggPet size={48} />}
+                {stage.id === "kitten"    && <KittenPet size={48} />}
+                {stage.id === "cat"       && <CatPet size={48} />}
+                {stage.id === "happy_cat" && <HappyCatPet size={48} />}
+                {stage.id === "legend"    && <LegendCatPet size={48} />}
+              </div>
+              <p
+                className="text-center whitespace-pre-wrap"
+                style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", lineHeight: "1.5" }}
+              >
+                {bubble.text}
+              </p>
+            </PetModal>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* The pet widget — fixed position, safe-area aware */}
       <motion.div
         animate={pos}
         transition={{ type: "spring", stiffness: 80, damping: 18 }}
@@ -520,62 +570,6 @@ export default function FamilyPet() {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="relative select-none">
-          {/* Speech bubble */}
-          <AnimatePresence>
-            {bubble && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.88, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.88, y: 10 }}
-                transition={{ type: "spring", stiffness: 420, damping: 30 }}
-                className="absolute"
-                style={{
-                  bottom: "calc(100% + 14px)",
-                  right: 0,
-                  width: "220px",
-                }}
-              >
-                {/* Bubble card */}
-                <div
-                  className="relative rounded-2xl p-3 shadow-2xl"
-                  style={{
-                    background: "#1c1c2e",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                  }}
-                >
-                  {/* Close button — top right inside card */}
-                  <button
-                    onClick={() => setBubble(null)}
-                    className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors text-sm leading-none"
-                    style={{ fontSize: "14px" }}
-                  >×</button>
-
-                  {/* Message text */}
-                  <p
-                    className="pr-5 whitespace-pre-wrap"
-                    style={{ color: "rgba(255,255,255,0.92)", fontSize: "14px", lineHeight: "1.45" }}
-                  >
-                    {bubble.text}
-                  </p>
-                </div>
-
-                {/* Triangle pointer pointing down toward the pet */}
-                <div
-                  className="absolute"
-                  style={{
-                    bottom: "-8px",
-                    right: "28px",
-                    width: 0,
-                    height: 0,
-                    borderLeft: "8px solid transparent",
-                    borderRight: "8px solid transparent",
-                    borderTop: "8px solid #1c1c2e",
-                    filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.3))",
-                  }}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Sleeping Zzz */}
           {petState === "sleeping" && <SleepingZzz />}
