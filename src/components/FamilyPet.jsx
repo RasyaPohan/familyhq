@@ -44,6 +44,23 @@ const IDLE_MESSAGES = [
   "The fridge is calling your name 🍕",
 ];
 
+// ─── Tap reaction system ───────────────────────────────────────────────────────
+// Each reaction has an animation id and a speech bubble message.
+// "angry" reactions flash a red face on the egg briefly.
+
+const TAP_REACTIONS = [
+  { anim: "tap-spin",   msg: "HEY! Stop that! 😡",           angry: true  },
+  { anim: "tap-jump",   msg: "I am NOT a toy 😤",            angry: false },
+  { anim: "tap-shake",  msg: "ow ow ow 🤕",                  angry: true  },
+  { anim: "tap-flip",   msg: "do you MIND 😒",               angry: false },
+  { anim: "tap-shrink", msg: "again?? seriously?? 🙄",        angry: false },
+  { anim: "tap-run",    msg: "ok that one was kinda fun ngl 😳", angry: false },
+  { anim: "tap-shake",  msg: "STOP POKING ME 😤",            angry: true  },
+  { anim: "tap-jump",   msg: "...you good bro? 👀",           angry: false },
+  { anim: "tap-spin",   msg: "I will remember this 😾",       angry: true  },
+  { anim: "tap-run",    msg: "ok im calling mom 📱",          angry: false },
+];
+
 // ─── CSS Cat SVG drawing ───────────────────────────────────────────────────────
 
 function EggPet({ size = 52 }) {
@@ -311,11 +328,12 @@ export default function FamilyPet() {
   const [nameInput, setNameInput] = useState("");
   const [totalXp, setTotalXp] = useState(0);
   const [stage, setStage] = useState(STAGES[0]);
-  const [petState, setPetState] = useState("idle"); // idle | happy | sleeping | excited | spinning
+  const [petState, setPetState] = useState("idle"); // idle | happy | sleeping | excited | spinning | tap-*
   const [bubble, setBubble] = useState(null); // { text, type }
   const [cornerIdx, setCornerIdx] = useState(0);
   const [showLongPress, setShowLongPress] = useState(false);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [angryFlash, setAngryFlash] = useState(false); // red overlay on egg
 
   const sleepTimer = useRef(null);
   const moveTimer = useRef(null);
@@ -323,6 +341,7 @@ export default function FamilyPet() {
   const tapCount = useRef(0);
   const tapTimer = useRef(null);
   const bubbleTimer = useRef(null);
+  const lastReactionIdx = useRef(-1); // prevent same animation twice in a row
 
   // ── Load family XP & check evolution ──────────────────────────────────────
   useEffect(() => {
@@ -402,10 +421,10 @@ export default function FamilyPet() {
     }
   }, [petName, member]);
 
-  function showBubble(text, type = "idle") {
+  function showBubble(text, type = "idle", duration = 5000) {
     clearTimeout(bubbleTimer.current);
     setBubble({ text, type });
-    bubbleTimer.current = setTimeout(() => setBubble(null), 5000);
+    bubbleTimer.current = setTimeout(() => setBubble(null), duration);
   }
 
   function triggerEvolutionCelebration(newStage) {
@@ -422,22 +441,38 @@ export default function FamilyPet() {
   // ── Tap handling ──────────────────────────────────────────────────────────
   const handleTap = () => {
     resetSleepTimer();
-    tapCount.current += 1;
-    clearTimeout(tapTimer.current);
-    tapTimer.current = setTimeout(() => {
-      if (tapCount.current >= 2) {
-        // Double tap → spin
-        setPetState("spinning");
-        setTimeout(() => setPetState("idle"), 1500);
-      } else {
-        // Single tap → random message
-        const msg = IDLE_MESSAGES[Math.floor(Math.random() * IDLE_MESSAGES.length)];
-        showBubble(petName ? `${msg}\n— ${petName}` : msg);
-        setPetState("happy");
-        setTimeout(() => setPetState("idle"), 2000);
-      }
-      tapCount.current = 0;
-    }, 280);
+
+    // Pick a random reaction that isn't the same animation as last time
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * TAP_REACTIONS.length);
+    } while (idx === lastReactionIdx.current && TAP_REACTIONS.length > 1);
+    lastReactionIdx.current = idx;
+
+    const reaction = TAP_REACTIONS[idx];
+
+    // Show bubble immediately (auto-dismiss after 2s)
+    showBubble(reaction.msg, "tap", 2000);
+
+    // Play animation
+    setPetState(reaction.anim);
+
+    // Flash angry red overlay briefly on angry reactions
+    if (reaction.angry) {
+      setAngryFlash(true);
+      setTimeout(() => setAngryFlash(false), 600);
+    }
+
+    // Reset to idle after animation completes
+    const animDurations = {
+      "tap-spin":   600,
+      "tap-jump":   800,
+      "tap-shake":  600,
+      "tap-flip":   700,
+      "tap-shrink": 500,
+      "tap-run":   1000,
+    };
+    setTimeout(() => setPetState("idle"), animDurations[reaction.anim] ?? 800);
   };
 
   // ── Long press ────────────────────────────────────────────────────────────
@@ -680,24 +715,53 @@ export default function FamilyPet() {
             onPointerUp={handlePressEnd}
             onPointerLeave={handlePressEnd}
             onClick={handleTap}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: "pointer", position: "relative" }}
             animate={
-              petState === "idle" ? { y: [0, -2, 0], scaleX: [1, 1.01, 1] } :
-              petState === "happy" ? { y: [0, -8, 0, -6, 0] } :
-              petState === "sleeping" ? { rotate: [0, 3, 0, -3, 0] } :
-              petState === "excited" ? { rotate: [0, -12, 12, -12, 12, 0] } :
-              petState === "spinning" ? { rotate: [0, 360] } :
+              petState === "idle"      ? { y: [0, -2, 0], scaleX: [1, 1.01, 1] } :
+              petState === "happy"     ? { y: [0, -8, 0, -6, 0] } :
+              petState === "sleeping"  ? { rotate: [0, 3, 0, -3, 0] } :
+              petState === "excited"   ? { rotate: [0, -12, 12, -12, 12, 0] } :
+              // ── Tap reactions ──
+              petState === "tap-spin"   ? { rotate: [0, 360] } :
+              petState === "tap-jump"   ? { y: [0, -28, 0, -10, 0] } :
+              petState === "tap-shake"  ? { x: [0, -8, 8, -8, 8, -6, 6, 0] } :
+              petState === "tap-flip"   ? { scaleY: [1, -1, -1, 1] } :
+              petState === "tap-shrink" ? { scale: [1, 0.35, 1.2, 1] } :
+              petState === "tap-run"    ? { x: [0, 0, 120, 120, 0] } :
               {}
             }
             transition={
-              petState === "idle" ? { duration: 3, repeat: Infinity, ease: "easeInOut" } :
-              petState === "happy" ? { duration: 0.6, repeat: 3, ease: "easeOut" } :
-              petState === "sleeping" ? { duration: 4, repeat: Infinity, ease: "easeInOut" } :
-              petState === "excited" ? { duration: 0.5, repeat: 3 } :
-              petState === "spinning" ? { duration: 0.5, ease: "easeInOut" } :
+              petState === "idle"      ? { duration: 3, repeat: Infinity, ease: "easeInOut" } :
+              petState === "happy"     ? { duration: 0.6, repeat: 3, ease: "easeOut" } :
+              petState === "sleeping"  ? { duration: 4, repeat: Infinity, ease: "easeInOut" } :
+              petState === "excited"   ? { duration: 0.5, repeat: 3 } :
+              petState === "tap-spin"  ? { duration: 0.55, ease: [0.4, 0, 0.2, 1] } :
+              petState === "tap-jump"  ? { duration: 0.75, ease: [0.33, 1, 0.68, 1], times: [0, 0.4, 0.7, 1] } :
+              petState === "tap-shake" ? { duration: 0.55, ease: "easeInOut" } :
+              petState === "tap-flip"  ? { duration: 0.65, ease: "easeInOut", times: [0, 0.3, 0.7, 1] } :
+              petState === "tap-shrink"? { duration: 0.45, ease: "easeInOut", times: [0, 0.35, 0.75, 1] } :
+              petState === "tap-run"   ? { duration: 0.9, ease: "easeInOut", times: [0, 0.05, 0.5, 0.55, 1] } :
               {}
             }
           >
+            {/* Angry red flash overlay */}
+            <AnimatePresence>
+              {angryFlash && (
+                <motion.div
+                  key="angry-flash"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.55, 0.35, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  style={{
+                    position: "absolute", inset: 0, borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(239,68,68,0.7) 0%, rgba(239,68,68,0) 70%)",
+                    pointerEvents: "none", zIndex: 2,
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
             {stage.id === "egg"       && <EggPet size={catSize} />}
             {stage.id === "kitten"    && <KittenPet size={catSize} />}
             {stage.id === "cat"       && <CatPet size={catSize} />}
