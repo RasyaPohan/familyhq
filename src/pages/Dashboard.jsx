@@ -88,14 +88,32 @@ export default function Dashboard() {
       </div>
 
       {/* Floating Quick Add Button */}
-      <div className="fixed left-6 z-40" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
+      <AnimatePresence>
+        {showQuick && (
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[38] bg-black/50"
+            onClick={() => setShowQuick(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <div
+        className="fixed left-4 z-[39]"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+      >
         <AnimatePresence>
           {showQuick && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              initial={{ opacity: 0, scale: 0.85, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              className="absolute bottom-16 right-0 bg-card rounded-2xl shadow-xl border border-border p-3 space-y-1 min-w-[180px]"
+              exit={{ opacity: 0, scale: 0.85, y: 12 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="absolute bottom-16 left-0 bg-card rounded-2xl shadow-xl border border-border p-3 space-y-1"
+              style={{ minWidth: "180px" }}
             >
               {quickActions.map((action) => (
                 <button
@@ -114,11 +132,34 @@ export default function Dashboard() {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          animate={{ rotate: showQuick ? 45 : 0 }}
           onClick={() => setShowQuick(!showQuick)}
           className="w-14 h-14 rounded-full gradient-primary text-white shadow-lg shadow-primary/30 flex items-center justify-center"
         >
-          <Plus className="w-6 h-6" />
+          <AnimatePresence mode="wait" initial={false}>
+            {showQuick ? (
+              <motion.span
+                key="x"
+                initial={{ rotate: -45, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 45, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center justify-center"
+              >
+                <Plus className="w-6 h-6 rotate-45" />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="plus"
+                initial={{ rotate: 45, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -45, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center justify-center"
+              >
+                <Plus className="w-6 h-6" />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </motion.button>
       </div>
     </div>
