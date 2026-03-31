@@ -2,7 +2,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import XPPopup from "@/components/XPPopup";
 import LevelUpOverlay from "@/components/LevelUpOverlay";
-import { Sun, Moon, Home, Calendar, CheckSquare, Camera, Utensils, DollarSign, Pin, Target, HelpCircle, LogOut, DoorOpen, Menu } from "lucide-react";
+import { Sun, Moon, Home, Calendar, CheckSquare, Camera, Utensils, DollarSign, Pin, Target, Gift, HelpCircle, LogOut, DoorOpen, Menu } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_COLORS, clearFamilySession } from "@/lib/familyStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: "/budget", icon: DollarSign, label: "Budget" },
   { path: "/noticeboard", icon: Pin, label: "Board" },
   { path: "/goals", icon: Target, label: "Goals" },
+  { path: "/rewards", icon: Gift, label: "Rewards Shop" },
   { path: "/moments", icon: Camera, label: "Moments" },
 ];
 
