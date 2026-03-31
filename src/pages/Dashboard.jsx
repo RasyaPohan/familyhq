@@ -30,7 +30,7 @@ export default function Dashboard() {
   const [showQuick, setShowQuick] = useState(false);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:ml-20">
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="relative">
         <GreetingWidget />
         <Link

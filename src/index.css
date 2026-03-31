@@ -123,24 +123,3 @@
   }
 }
 
-/*
-  These rules are intentionally outside all @layer blocks.
-  Unlayered CSS always wins over @layer rules in the cascade,
-  so these override everything Tailwind generates — no !important needed.
-*/
-.bottom-nav-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 9999;
-  margin: 0;
-  padding-top: 0.5rem;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-.layout-main {
-  padding-bottom: 80px;
-}

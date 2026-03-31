@@ -1,26 +1,24 @@
-import { Outlet, useLocation, useNavigate, Link } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import XPPopup from "@/components/XPPopup";
 import LevelUpOverlay from "@/components/LevelUpOverlay";
-import { Sun, Moon, Bell, Home, Calendar, CheckSquare, Camera, MoreHorizontal, Utensils, DollarSign, Pin, Target, HelpCircle, LogOut, DoorOpen, X } from "lucide-react";
+import { Sun, Moon, Home, Calendar, CheckSquare, Camera, MoreHorizontal, Utensils, DollarSign, Pin, Target, HelpCircle, LogOut, DoorOpen } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_COLORS, clearFamilySession, getFamilyCode } from "@/lib/familyStore";
+import { getActiveMember, setActiveMember, getThemeMode, setThemeMode, MEMBER_COLORS, clearFamilySession } from "@/lib/familyStore";
 import { motion, AnimatePresence } from "framer-motion";
 
-const MAIN_NAV = [
+const NAV_ITEMS = [
   { path: "/dashboard", icon: Home, label: "Home" },
   { path: "/calendar", icon: Calendar, label: "Calendar" },
   { path: "/chores", icon: CheckSquare, label: "Chores" },
+  { path: "/meals", icon: Utensils, label: "Meals" },
+  { path: "/budget", icon: DollarSign, label: "Budget" },
+  { path: "/noticeboard", icon: Pin, label: "Board" },
+  { path: "/goals", icon: Target, label: "Goals" },
   { path: "/moments", icon: Camera, label: "Moments" },
 ];
 
-const MORE_ITEMS = [
-  { path: "/meals", icon: Utensils, label: "Meals", emoji: "🍽️" },
-  { path: "/budget", icon: DollarSign, label: "Budget", emoji: "💸" },
-  { path: "/noticeboard", icon: Pin, label: "Board", emoji: "📌" },
-  { path: "/goals", icon: Target, label: "Goals", emoji: "🎯" },
-  { path: "/guide", icon: HelpCircle, label: "How it works", emoji: "❓" },
-];
+const NAV_PATHS = NAV_ITEMS.map((i) => i.path);
 
 export default function Layout() {
   const location = useLocation();
@@ -30,6 +28,8 @@ export default function Layout() {
   const [showMore, setShowMore] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const moreRef = useRef(null);
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const memberColor = member ? MEMBER_COLORS[member.color] : MEMBER_COLORS.purple;
 
   useEffect(() => {
@@ -58,7 +58,6 @@ export default function Layout() {
     };
   }, [showMore]);
 
-  // Close more menu on navigation
   useEffect(() => { setShowMore(false); }, [location.pathname]);
 
   const toggleTheme = () => {
@@ -82,43 +81,190 @@ export default function Layout() {
     navigate("/", { replace: true });
   };
 
-  const isMoreActive = MORE_ITEMS.some(i => i.path === location.pathname);
+  // Swipe gesture handlers
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // Ignore if primarily vertical scroll or too short
+    if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 50) return;
+
+    const currentIdx = NAV_PATHS.indexOf(location.pathname);
+    if (currentIdx === -1) return;
+
+    if (dx < 0 && currentIdx < NAV_PATHS.length - 1) {
+      // Swipe left → next page
+      navigate(NAV_PATHS[currentIdx + 1]);
+    } else if (dx > 0 && currentIdx > 0) {
+      // Swipe right → previous page
+      navigate(NAV_PATHS[currentIdx - 1]);
+    }
+  };
 
   return (
-    <div className="bg-background flex flex-col" style={{ minHeight: "100dvh" }}>
+    <div className="bg-background flex" style={{ minHeight: "100dvh" }}>
       <OnboardingWizard />
       <XPPopup />
       <LevelUpOverlay />
 
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 bg-card/90 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between shrink-0">
-        <motion.button
-          onClick={() => navigate("/select")}
-          whileTap={{ scale: 0.85 }}
-          className="flex items-center gap-2"
-        >
-          <span className="text-2xl">🏠</span>
-          <span className="font-heading font-bold text-base hidden sm:block">Family HQ</span>
-        </motion.button>
-        <div className="flex items-center gap-1.5">
-          <button onClick={toggleTheme} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted transition-colors">
-            {isDark ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted transition-colors">
-            <Bell className="w-4 h-4 text-muted-foreground" />
-          </button>
+      {/* Left Sidebar */}
+      <aside
+        className="fixed left-0 top-0 bottom-0 z-30 flex flex-col items-center py-3 shrink-0"
+        style={{
+          width: "56px",
+          background: "rgba(10,10,15,0.92)",
+          borderRight: `1px solid ${memberColor.hex}30`,
+          paddingTop: "calc(0.75rem + env(safe-area-inset-top))",
+          paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
+        }}
+      >
+        {/* Nav icons */}
+        <nav className="flex flex-col items-center gap-1 flex-1">
+          {NAV_ITEMS.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <motion.button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                whileTap={{ scale: 0.85 }}
+                title={item.label}
+                className="relative flex items-center justify-center w-10 h-10 rounded-xl"
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-pill"
+                    className="absolute inset-0 rounded-xl"
+                    style={{ background: `${memberColor.hex}22` }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+                <Icon
+                  className="w-5 h-5 relative z-10 transition-all duration-200"
+                  style={{
+                    color: isActive ? memberColor.hex : "rgba(255,255,255,0.45)",
+                    filter: isActive
+                      ? `drop-shadow(0 0 6px ${memberColor.hex}) drop-shadow(0 0 12px ${memberColor.hex}80)`
+                      : "none",
+                  }}
+                />
+              </motion.button>
+            );
+          })}
+        </nav>
+
+        {/* Bottom: theme toggle + more */}
+        <div className="flex flex-col items-center gap-1 mt-auto">
+          <motion.button
+            onClick={toggleTheme}
+            whileTap={{ scale: 0.85 }}
+            title={isDark ? "Light mode" : "Dark mode"}
+            className="flex items-center justify-center w-10 h-10 rounded-xl"
+          >
+            {isDark
+              ? <Sun className="w-4 h-4 text-yellow-400" />
+              : <Moon className="w-4 h-4" style={{ color: "rgba(255,255,255,0.45)" }} />
+            }
+          </motion.button>
+
+          <div className="relative" ref={moreRef}>
+            <motion.button
+              onClick={() => setShowMore(!showMore)}
+              whileTap={{ scale: 0.85 }}
+              title="More"
+              className="flex items-center justify-center w-10 h-10 rounded-xl"
+            >
+              <MoreHorizontal
+                className="w-5 h-5 transition-all duration-200"
+                style={{
+                  color: showMore ? memberColor.hex : "rgba(255,255,255,0.45)",
+                  filter: showMore ? `drop-shadow(0 0 6px ${memberColor.hex})` : "none",
+                }}
+              />
+            </motion.button>
+
+            {/* More popup — floats to the right of the sidebar */}
+            <AnimatePresence>
+              {showMore && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  className="absolute left-12 bottom-0 w-52 rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50"
+                  style={{ background: "#1c1c2e" }}
+                >
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      onClick={() => { navigate("/guide"); setShowMore(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:bg-white/8 hover:text-white transition-all"
+                    >
+                      <HelpCircle className="w-4 h-4 shrink-0" />
+                      How it works
+                    </button>
+                    <div className="border-t border-white/10 my-1" />
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:bg-white/8 hover:text-white/80 transition-all"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      Switch Member
+                    </button>
+                    <button
+                      onClick={() => { setShowMore(false); setShowLeaveConfirm(true); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                    >
+                      <DoorOpen className="w-4 h-4 shrink-0" />
+                      Leave HQ
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content area */}
+      <div
+        className="flex flex-col flex-1"
+        style={{ marginLeft: "56px", minHeight: "100dvh" }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Top Bar */}
+        <header className="sticky top-0 z-20 bg-card/90 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between shrink-0">
+          <motion.button
+            onClick={() => navigate("/select")}
+            whileTap={{ scale: 0.85 }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-2xl">🏠</span>
+            <span className="font-heading font-bold text-base hidden sm:block">Family HQ</span>
+          </motion.button>
           {member && (
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ml-1 ${memberColor.bg}`}>
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold`}
+              style={{ background: memberColor.hex }}
+            >
               {member.emoji || member.name[0]}
             </div>
           )}
-        </div>
-      </header>
+        </header>
 
-      {/* Page content — padding clears the fixed nav bar */}
-      <main className="layout-main flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
 
       {/* More menu backdrop */}
       <AnimatePresence>
@@ -128,126 +274,11 @@ export default function Layout() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/50 z-[9990]"
+            className="fixed inset-0 z-[29]"
             onClick={() => setShowMore(false)}
           />
         )}
       </AnimatePresence>
-
-      {/* More menu popup */}
-      <AnimatePresence>
-        {showMore && (
-          <motion.div
-            ref={moreRef}
-            initial={{ opacity: 0, y: 16, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="fixed right-3 z-[9995] w-56 rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
-            style={{ background: "#1c1c2e", bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
-          >
-            <div className="p-2 space-y-0.5">
-              {MORE_ITEMS.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                      isActive ? "bg-purple-500/20 text-purple-300" : "text-white/60 hover:bg-white/8 hover:text-white"
-                    }`}
-                  >
-                    <span className="text-lg w-6 text-center">{item.emoji}</span>
-                    {item.label}
-                  </button>
-                );
-              })}
-              <div className="border-t border-white/10 my-1" />
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:bg-white/8 hover:text-white/80 transition-all"
-              >
-                <LogOut className="w-5 h-5 shrink-0" />
-                Switch Member
-              </button>
-              <button
-                onClick={() => { setShowMore(false); setShowLeaveConfirm(true); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-all"
-              >
-                <DoorOpen className="w-5 h-5 shrink-0" />
-                Leave HQ
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Bottom Navigation Bar */}
-      <nav
-        className="bottom-nav-bar flex items-center justify-around backdrop-blur-xl"
-        style={{
-          background: "rgba(10,10,15,0.92)",
-          borderTop: `1px solid ${memberColor.hex}40`,
-          boxShadow: `0 -1px 0 ${memberColor.hex}25, 0 -8px 32px rgba(0,0,0,0.6)`,
-        }}
-      >
-        {MAIN_NAV.map((item) => {
-          const isActive = location.pathname === item.path;
-          const Icon = item.icon;
-          return (
-            <motion.button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              whileTap={{ scale: 0.85 }}
-              className="relative flex flex-col items-center justify-center w-14 h-12"
-            >
-              <motion.div
-                animate={isActive ? { scale: 1.15 } : { scale: 1 }}
-                transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              >
-                <Icon
-                  className="w-6 h-6 transition-all duration-200"
-                  style={{
-                    color: isActive ? memberColor.hex : "rgba(255,255,255,0.55)",
-                    filter: isActive ? `drop-shadow(0 0 8px ${memberColor.hex}) drop-shadow(0 0 16px ${memberColor.hex}80)` : "none",
-                  }}
-                />
-              </motion.div>
-              {isActive && (
-                <motion.div
-                  layoutId="active-dot"
-                  className="absolute bottom-0 w-1 h-1 rounded-full"
-                  style={{ background: memberColor.hex, boxShadow: `0 0 6px ${memberColor.hex}` }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
-            </motion.button>
-          );
-        })}
-
-        {/* More button */}
-        <motion.button
-          onClick={() => setShowMore(!showMore)}
-          whileTap={{ scale: 0.85 }}
-          className="relative flex flex-col items-center justify-center w-14 h-12"
-        >
-          <motion.div animate={showMore || isMoreActive ? { scale: 1.15 } : { scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 25 }}>
-            <MoreHorizontal
-              className="w-6 h-6 transition-all duration-200"
-                    style={{
-                      color: showMore || isMoreActive ? memberColor.hex : "rgba(255,255,255,0.55)",
-                      filter: showMore || isMoreActive ? `drop-shadow(0 0 8px ${memberColor.hex}) drop-shadow(0 0 16px ${memberColor.hex}80)` : "none",
-              }}
-            />
-          </motion.div>
-          {isMoreActive && !showMore && (
-            <motion.div
-              className="absolute bottom-0 w-1 h-1 rounded-full"
-              style={{ background: memberColor.hex, boxShadow: `0 0 6px ${memberColor.hex}` }}
-            />
-          )}
-        </motion.button>
-      </nav>
 
       {/* Leave HQ Confirmation */}
       {showLeaveConfirm && (

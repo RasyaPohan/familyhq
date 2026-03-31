@@ -231,25 +231,32 @@ export default function MomentsPage() {
     const file = e.target.files?.[0];
     if (!file || !member) return;
     setUploading(true);
-    const file_url = await uploadMomentPhoto(file, familyCode);
-    await db.FamilyPhoto.create({
-      family_code: familyCode,
-      photo_url: file_url,
-      caption: caption.trim(),
-      emoji_tag: emojiTag,
-      member_id: member.id,
-      member_name: member.name,
-      member_color: member.color,
-      member_emoji: member.emoji,
-      reactions: { heart: [], laugh: [], fire: [], clap: [], love: [] },
-      comment_count: 0,
-    });
-    setCaption("");
-    setEmojiTag("✨");
-    setShowUpload(false);
-    setUploading(false);
-    confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ["#8B5CF6","#EC4899","#F59E0B"] });
-    loadPhotos();
+    try {
+      const file_url = await uploadMomentPhoto(file, familyCode);
+      await db.FamilyPhoto.create({
+        family_code: familyCode,
+        photo_url: file_url,
+        caption: caption.trim(),
+        emoji_tag: emojiTag,
+        member_id: member.id,
+        member_name: member.name,
+        member_color: member.color,
+        member_emoji: member.emoji,
+        reactions: { heart: [], laugh: [], fire: [], clap: [], love: [] },
+        comment_count: 0,
+      });
+      setCaption("");
+      setEmojiTag("✨");
+      setShowUpload(false);
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ["#8B5CF6","#EC4899","#F59E0B"] });
+      loadPhotos();
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   const handleReact = async (photo, reactionKey) => {

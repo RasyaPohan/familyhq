@@ -105,7 +105,7 @@ export default function RewardsPage() {
   const memberColor = member ? MEMBER_COLORS[member.color] || MEMBER_COLORS.purple : MEMBER_COLORS.purple;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:ml-20">
+    <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-2xl font-bold">Rewards Shop 🎁</h1>

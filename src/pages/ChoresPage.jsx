@@ -96,7 +96,7 @@ export default function ChoresPage() {
     .sort((a, b) => b.xp - a.xp);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:ml-20">
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-heading text-2xl font-bold">Chores ✅</h1>

@@ -103,7 +103,7 @@ export default function BudgetPage() {
   const pendingRequests = transactions.filter(t => t.type === 'allowance_request' && t.status === 'pending');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:ml-20">
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
         <h1 className="font-heading text-xl md:text-2xl font-bold">Budget 💸</h1>
         <div className="flex gap-2">
