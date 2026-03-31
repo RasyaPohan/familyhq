@@ -404,7 +404,7 @@ export default function FamilyPet() {
   if (!familyCode) return null;
 
   const pos = CORNERS[cornerIdx];
-  const catSize = stage.id === "legend" ? 60 : stage.id === "cat" || stage.id === "happy_cat" ? 56 : 52;
+  const catSize = stage.id === "legend" ? 64 : stage.id === "cat" || stage.id === "happy_cat" ? 60 : stage.id === "kitten" ? 56 : 68;
 
   return (
     <>
@@ -422,7 +422,7 @@ export default function FamilyPet() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: 20 }}
               transition={{ type: "spring", stiffness: 350, damping: 28 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9810] w-80 rounded-3xl p-6 shadow-2xl"
+              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-[9810] rounded-3xl p-6 shadow-2xl"
               style={{ background: "#1c1c2e", border: "1px solid rgba(255,255,255,0.12)" }}
               onClick={e => e.stopPropagation()}
             >
