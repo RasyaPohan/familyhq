@@ -25,7 +25,7 @@ function timeAgo(dateStr) {
 
 function PhotoCard({ photo, member, onOpen, onReact }) {
   const color = MEMBER_COLORS[photo.member_color] || MEMBER_COLORS.purple;
-  const isNew = (Date.now() - new Date(photo.created_date)) / 1000 < 120;
+  const isNew = (Date.now() - new Date(photo.created_at)) / 1000 < 120;
 
   return (
     <motion.div
@@ -52,7 +52,7 @@ function PhotoCard({ photo, member, onOpen, onReact }) {
             {photo.member_emoji || photo.member_name[0]}
           </div>
           <span className="text-white/70 text-xs font-medium">{photo.member_name}</span>
-          <span className="text-white/30 text-xs ml-auto">{timeAgo(photo.created_date)}</span>
+          <span className="text-white/30 text-xs ml-auto">{timeAgo(photo.created_at)}</span>
         </div>
         {photo.caption && <p className="text-white/90 text-sm leading-snug mb-2">{photo.emoji_tag} {photo.caption}</p>}
         {/* Reactions row */}
@@ -123,7 +123,7 @@ function PhotoModal({ photo, member, onClose, onReact }) {
               {photo.member_emoji || photo.member_name[0]}
             </div>
             <span className="text-white font-medium text-sm">{photo.member_name}</span>
-            <span className="text-white/40 text-xs">{timeAgo(photo.created_date)}</span>
+            <span className="text-white/40 text-xs">{timeAgo(photo.created_at)}</span>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white">
             <X className="w-5 h-5" />
@@ -172,7 +172,7 @@ function PhotoModal({ photo, member, onClose, onReact }) {
                   <div>
                     <span className="text-white/70 text-xs font-semibold">{c.member_name} </span>
                     <span className="text-white text-sm">{c.text}</span>
-                    <p className="text-white/30 text-[10px] mt-0.5">{timeAgo(c.created_date)}</p>
+                    <p className="text-white/30 text-[10px] mt-0.5">{timeAgo(c.created_at)}</p>
                   </div>
                 </div>
               );
