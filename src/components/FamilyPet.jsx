@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { db } from "@/lib/db";
 import { getActiveMember, getFamilyCode, getFamilyName } from "@/lib/familyStore";
 import confetti from "canvas-confetti";
@@ -24,15 +24,25 @@ function getStage(totalXp) {
   return stage;
 }
 
-// ─── Corner positions ──────────────────────────────────────────────────────────
-// All corners use CSS calc so the pet sits just above the safe area inset.
-// The string values are passed directly as the `animate` target for the motion.div.
-// 3 allowed corners — bottom-left is reserved for the + button
-const CORNERS = [
-  { id: "bottom-right", bottom: 16, right: 16, left: "auto", top: "auto" },
-  { id: "top-right",    bottom: "auto", top: 80, right: 16, left: "auto" },
-  { id: "top-left",     bottom: "auto", top: 80, right: "auto", left: 16 },
-];
+// ─── Corner snap positions ─────────────────────────────────────────────────────
+// EDGE_PAD: distance from screen edges; BOTTOM_PAD: keeps pet above nav bar.
+// Bottom-left is excluded (reserved for nav / layout elements).
+const EDGE_PAD = 16;
+const BOTTOM_PAD = 100;
+
+// Returns the pixel {x, y} of each allowed corner's top-left origin
+// given current viewport dimensions and pet size.
+function cornerPositions(petSize) {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  return [
+    { id: "bottom-right", x: W - petSize - EDGE_PAD, y: H - petSize - BOTTOM_PAD },
+    { id: "top-right",    x: W - petSize - EDGE_PAD, y: 80 },
+    { id: "top-left",     x: EDGE_PAD,               y: 80 },
+  ];
+}
+
+const PET_CORNER_KEY = "hq_pet_corner"; // localStorage key for last corner id
 
 // ─── Idle speech messages ──────────────────────────────────────────────────────
 const IDLE_MESSAGES = [
@@ -351,25 +361,34 @@ export default function FamilyPet() {
   const [nameInput, setNameInput] = useState("");
   const [totalXp, setTotalXp] = useState(0);
   const [stage, setStage] = useState(STAGES[0]);
-  const [petState, setPetState] = useState("idle"); // idle | happy | sleeping | excited | spinning | tap-*
+  const [petState, setPetState] = useState("idle"); // idle | happy | sleeping | excited | tap-*
   const [bubble, setBubble] = useState(null); // { text, type }
-  const [cornerIdx, setCornerIdx] = useState(0);
+  const [cornerId, setCornerId] = useState(
+    () => localStorage.getItem(PET_CORNER_KEY) || "bottom-right"
+  );
   const [showLongPress, setShowLongPress] = useState(false);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [angryFlash, setAngryFlash] = useState(false); // red overlay on egg
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [mood, setMood] = useState(MOODS.curious);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Framer Motion values for drag position (pixel x/y from top-left of viewport)
+  const motionX = useMotionValue(0);
+  const motionY = useMotionValue(0);
+  const petSizeRef = useRef(80); // updated after first render
 
   const sleepTimer = useRef(null);
-  const moveTimer = useRef(null);
   const longPressTimer = useRef(null);
-  const tapCount = useRef(0);
-  const tapTimer = useRef(null);
   const bubbleTimer = useRef(null);
-  const lastReactionIdx = useRef(-1); // prevent same animation twice in a row
-  const lastAICallTime = useRef(0); // timestamp of last successful AI call
-  // Cached context data for AI prompt (refreshed on each tap)
+  const lastReactionIdx = useRef(-1);
+  const lastAICallTime = useRef(0);
   const aiContext = useRef({});
+
+  // Drag tracking refs
+  const pointerDownPos = useRef(null);   // { x, y, time }
+  const lastPointerPos = useRef(null);   // { x, y } — previous frame position for delta
+  const isDragActive = useRef(false);    // true while finger is dragging
 
   // ── Load family XP & check evolution ──────────────────────────────────────
   useEffect(() => {
@@ -444,13 +463,31 @@ export default function FamilyPet() {
     return () => clearTimeout(sleepTimer.current);
   }, []);
 
-  // ── Corner movement every 3 minutes ───────────────────────────────────────
+  // ── Snap helper: animate motionX/Y to a named corner ─────────────────────
+  const snapToCorner = useCallback((id, springOpts = {}) => {
+    const petSize = petSizeRef.current;
+    const corners = cornerPositions(petSize);
+    const target = corners.find(c => c.id === id) || corners[0];
+    const opts = { type: "spring", stiffness: 260, damping: 22, ...springOpts };
+    animate(motionX, target.x, opts);
+    animate(motionY, target.y, opts);
+    setCornerId(id);
+    localStorage.setItem(PET_CORNER_KEY, id);
+  }, [motionX, motionY]);
+
+  // ── Position pet on mount and after resize ────────────────────────────────
   useEffect(() => {
-    moveTimer.current = setInterval(() => {
-      setCornerIdx(prev => (prev + 1) % CORNERS.length);
-    }, 3 * 60_000);
-    return () => clearInterval(moveTimer.current);
-  }, []);
+    const place = () => {
+      const saved = localStorage.getItem(PET_CORNER_KEY) || "bottom-right";
+      const corners = cornerPositions(petSizeRef.current);
+      const target = corners.find(c => c.id === saved) || corners[0];
+      motionX.set(target.x);
+      motionY.set(target.y);
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── AI morning greeting (once per day, 06:00–11:00) ─────────────────────
   useEffect(() => {
@@ -716,18 +753,83 @@ export default function FamilyPet() {
     setTimeout(() => setPetState("idle"), animDurations[reaction.anim] ?? 800);
   }
 
-  // ── Long press ────────────────────────────────────────────────────────────
-  const handlePressStart = () => {
-    longPressTimer.current = setTimeout(() => {
-      setShowLongPress(true);
-      clearTimeout(bubbleTimer.current);
-      setBubble(null);
-    }, 600);
-  };
+  // ── Drag & snap pointer handlers ─────────────────────────────────────────
+  const handlePointerDown = useCallback((e) => {
+    // Capture pointer so we get move/up even if finger leaves element
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointerDownPos.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+    lastPointerPos.current = { x: e.clientX, y: e.clientY };
+    isDragActive.current = false;
 
-  const handlePressEnd = () => {
+    // Long-press (600ms) → open stats modal (only if not dragging)
+    longPressTimer.current = setTimeout(() => {
+      if (!isDragActive.current) {
+        setShowLongPress(true);
+        clearTimeout(bubbleTimer.current);
+        setBubble(null);
+      }
+    }, 600);
+  }, [bubbleTimer]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (!pointerDownPos.current) return;
+    const totalDx = e.clientX - pointerDownPos.current.x;
+    const totalDy = e.clientY - pointerDownPos.current.y;
+    const dist = Math.hypot(totalDx, totalDy);
+    const elapsed = Date.now() - pointerDownPos.current.time;
+
+    // Enter drag mode: moved >6px AND held >150ms
+    if (!isDragActive.current && dist > 6 && elapsed > 150) {
+      isDragActive.current = true;
+      clearTimeout(longPressTimer.current);
+      setIsDragging(true);
+    }
+
+    if (isDragActive.current) {
+      const petSize = petSizeRef.current;
+      const prev = lastPointerPos.current || { x: e.clientX, y: e.clientY };
+      const frameDx = e.clientX - prev.x;
+      const frameDy = e.clientY - prev.y;
+      const newX = motionX.get() + frameDx;
+      const newY = motionY.get() + frameDy;
+      // Clamp so pet stays on screen
+      motionX.set(Math.max(0, Math.min(window.innerWidth - petSize, newX)));
+      motionY.set(Math.max(0, Math.min(window.innerHeight - petSize, newY)));
+    }
+    lastPointerPos.current = { x: e.clientX, y: e.clientY };
+  }, [motionX, motionY]);
+
+  const handlePointerUp = useCallback((e) => {
     clearTimeout(longPressTimer.current);
-  };
+    const wasDown = pointerDownPos.current;
+    pointerDownPos.current = null;
+
+    if (isDragActive.current) {
+      // Find nearest allowed corner
+      isDragActive.current = false;
+      setIsDragging(false);
+      const petSize = petSizeRef.current;
+      const curX = motionX.get();
+      const curY = motionY.get();
+      const corners = cornerPositions(petSize);
+      let nearest = corners[0];
+      let minDist = Infinity;
+      for (const c of corners) {
+        const d = Math.hypot(curX - c.x, curY - c.y);
+        if (d < minDist) { minDist = d; nearest = c; }
+      }
+      snapToCorner(nearest.id);
+    } else {
+      // It was a tap — only fire if press was short enough (<500ms and <10px move)
+      if (!wasDown) return;
+      const elapsed = Date.now() - wasDown.time;
+      const dx = e.clientX - wasDown.x;
+      const dy = e.clientY - wasDown.y;
+      if (elapsed < 500 && Math.hypot(dx, dy) < 10) {
+        handleTap();
+      }
+    }
+  }, [motionX, motionY, snapToCorner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Save pet name ─────────────────────────────────────────────────────────
   const savePetName = () => {
@@ -741,10 +843,8 @@ export default function FamilyPet() {
 
   if (!familyCode) return null;
 
-  const corner = CORNERS[cornerIdx];
-  // Strip `id` before passing to Framer Motion animate (only numeric/string CSS props allowed)
-  const { id: cornerId, ...pos } = corner;
   const catSize = stage.id === "legend" ? 64 : stage.id === "cat" || stage.id === "happy_cat" ? 60 : stage.id === "kitten" ? 56 : 80;
+  petSizeRef.current = catSize;
 
   // Derive bubble position style based on which corner the pet is in
   const isOnLeft = cornerId === "top-left";
@@ -883,12 +983,17 @@ export default function FamilyPet() {
         )}
       </AnimatePresence>
 
-      {/* The pet widget — fixed position, safe-area aware */}
+      {/* The pet widget — fixed position, draggable with corner snapping */}
       <motion.div
-        animate={pos}
-        transition={{ type: "spring", stiffness: 80, damping: 18 }}
         className="fixed z-[9700]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        style={{
+          x: motionX,
+          y: motionY,
+          top: 0,
+          left: 0,
+          cursor: isDragging ? "grabbing" : "grab",
+          touchAction: "none", // prevent scroll interference while dragging
+        }}
       >
         <div className="relative select-none">
 
@@ -973,11 +1078,11 @@ export default function FamilyPet() {
 
           {/* Cat body with animation state */}
           <motion.div
-            onPointerDown={handlePressStart}
-            onPointerUp={handlePressEnd}
-            onPointerLeave={handlePressEnd}
-            onClick={handleTap}
-            style={{ cursor: "pointer", position: "relative" }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={{ cursor: isDragging ? "grabbing" : "pointer", position: "relative", userSelect: "none" }}
             animate={
               isAIThinking             ? { y: [0, -3, 0], scaleX: [1, 1.02, 1] } :
               petState === "idle"      ? { y: [0, -2, 0], scaleX: [1, 1.01, 1] } :
