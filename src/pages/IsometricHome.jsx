@@ -204,13 +204,13 @@ function getLayout(memberCount) {
     ],
   };
   if (count === 5) return {
-    cols: 3, rows: 2, tvMode: "slot",
+    cols: 3, rows: 2, tvMode: "door",
     slots: [
       { slotIndex: 0, col: 0, row: 0, type: "member", memberId: 0, sharedType: null },
       { slotIndex: 1, col: 1, row: 0, type: "member", memberId: 1, sharedType: null },
       { slotIndex: 2, col: 2, row: 0, type: "member", memberId: 2, sharedType: null },
       { slotIndex: 3, col: 0, row: 1, type: "member", memberId: 3, sharedType: null },
-      { slotIndex: 4, col: 1, row: 1, type: "tv",     memberId: null, sharedType: null },
+      { slotIndex: 4, col: 1, row: 1, type: "door",   memberId: null, sharedType: null },
       { slotIndex: 5, col: 2, row: 1, type: "member", memberId: 4, sharedType: null },
     ],
   };
@@ -233,7 +233,7 @@ function getMemberForSlot(slot, members) {
 }
 
 function getSlotColor(slot, members) {
-  if (slot.type === "tv") return "#7c3aed";
+  if (slot.type === "tv" || slot.type === "door") return "#7c3aed";
   if (slot.type === "shared") {
     return slot.sharedType === "garden" ? "#059669"
          : slot.sharedType === "library" ? "#4338ca"
@@ -373,6 +373,7 @@ function FrontView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }
         const col = getSlotColor(slot, members);
         const isHov = hov === slot.slotIndex;
         const isTV = slot.type === "tv";
+        const isDoor = slot.type === "door";
         const isShared = slot.type === "shared";
         const st = m ? STATUS_CONFIG[statuses[m.id]] || STATUS_CONFIG.home : null;
 
@@ -382,6 +383,59 @@ function FrontView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }
         const ph = ROW_H - PAD * 2;
         const pcx = px + pw / 2;
         const pcy = py + ph / 2;
+
+        // ── Door cell: sign on top, archway on bottom, no room card ──────────
+        if (isDoor) {
+          // Sign area: top of cell + small top padding
+          const signH = 16, signW = pw - 4, signPadTop = 6;
+          const signX = px + 2, signY = py + signPadTop;
+          // Door archway: below sign with gap
+          const archGap = 6;
+          const archTop = signY + signH + archGap;
+          const dw = Math.min(36, pw - 16);
+          const dh = py + ph - archTop - 4; // fills remaining height
+          const dx = pcx - dw / 2;
+          const archRad = dw / 2;
+          return (
+            <g key={slot.slotIndex} style={{ cursor: "pointer" }} onClick={onTV}>
+              {/* Sign glow */}
+              <motion.rect x={signX - 3} y={signY - 3} width={signW + 6} height={signH + 6} rx="8"
+                fill="#7c3aed"
+                animate={{ opacity: [0.10, 0.28, 0.10] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                filter="url(#ftvGlow)"
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Sign plaque */}
+              <rect x={signX} y={signY} width={signW} height={signH} rx="5"
+                fill="rgba(5,3,20,0.92)" stroke="#7c3aed" strokeWidth="1.2" strokeOpacity="0.85"/>
+              <text x={pcx} y={signY + signH - 4} textAnchor="middle"
+                fontSize="6.5" fontWeight="900" fill="white" opacity="0.95"
+                style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "0.9px", pointerEvents: "none" }}>
+                ✨ ENTER HQ
+              </text>
+              {/* Archway — dark opening with arched top */}
+              <rect x={px} y={archTop} width={pw} height={ph - (archTop - py)} rx="0"
+                fill="rgba(0,0,0,0)" style={{ pointerEvents: "none" }}/>
+              {/* Arch surround */}
+              <rect x={dx - 4} y={archTop} width={dw + 8} height={dh + 4} rx="3"
+                fill="#0a0818" stroke="#4c1d95" strokeWidth="1" opacity="0.9"
+                style={{ pointerEvents: "none" }}/>
+              {/* Arch opening */}
+              <path d={`M${dx},${archTop + archRad} A${archRad},${archRad} 0 0,1 ${dx + dw},${archTop + archRad} L${dx + dw},${archTop + dh} L${dx},${archTop + dh} Z`}
+                fill="#030209" style={{ pointerEvents: "none" }}/>
+              {/* Door glow from inside */}
+              <path d={`M${dx},${archTop + archRad} A${archRad},${archRad} 0 0,1 ${dx + dw},${archTop + archRad} L${dx + dw},${archTop + dh} L${dx},${archTop + dh} Z`}
+                fill="#7c3aed" opacity="0.10" filter="url(#ftvGlow)" style={{ pointerEvents: "none" }}/>
+              {/* Door handle */}
+              <circle cx={dx + dw - 6} cy={archTop + archRad + (dh - archRad) * 0.55}
+                r="2.5" fill="#7c3aed" opacity="0.75" style={{ pointerEvents: "none" }}/>
+              {/* Hit area */}
+              <rect x={px} y={py} width={pw} height={ph} rx="0"
+                fill="transparent" stroke="transparent"/>
+            </g>
+          );
+        }
 
         return (
           <g key={slot.slotIndex}>
@@ -417,13 +471,10 @@ function FrontView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }
             {/* Member info */}
             {m && !isTV && (
               <g style={{ pointerEvents: "none" }}>
-                {/* Emoji — bigger */}
                 <text x={pcx} y={pcy - 10} textAnchor="middle" fontSize="20"
                   style={{ fontFamily: "system-ui" }}>{m.emoji || m.name[0]}</text>
-                {/* Name — white bold */}
                 <text x={pcx} y={pcy + 7} textAnchor="middle" fontSize="7.5" fontWeight="800"
                   fill="white" style={{ fontFamily: "system-ui,sans-serif" }}>{m.name}</text>
-                {/* Status badge */}
                 {st && (
                   <>
                     <rect x={pcx - 18} y={pcy + 9} width="36" height="11" rx="5.5"
@@ -503,46 +554,20 @@ function FrontView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }
         );
       })()}
 
-      {/* Front door + ENTER HQ sign above it */}
-      {(() => {
+      {/* Decorative door at house base — only shown when no door-type cell (≤4 or 6 members) */}
+      {tvMode !== "door" && (() => {
         const dw = 30, dh = 44;
         const dx = CX - dw / 2, dy = HB - dh;
-        // Sign sits above door: sign bottom = dy - 6, sign height = 16
-        const sw = 58, sh = 16;
-        const sx = CX - sw / 2, sy = dy - sh - 6;
         return (
-          <>
-            {/* Door (decorative) */}
-            <g style={{ pointerEvents: "none" }}>
-              <rect x={dx - 2} y={dy - 2} width={dw + 4} height={dh + 2} rx="5"
-                fill="#7c3aed" opacity="0.15" filter="url(#ftvGlow)"/>
-              <rect x={dx} y={dy} width={dw} height={dh} rx="4"
-                fill="#08071a" stroke="#6d28d9" strokeWidth="1.2"/>
-              <path d={`M${dx},${dy + 11} Q${CX},${dy - 5} ${dx + dw},${dy + 11}`}
-                fill="none" stroke="#7c3aed" strokeWidth="0.9" opacity="0.55"/>
-              <circle cx={dx + dw - 7} cy={dy + 24} r="3" fill="#7c3aed" opacity="0.8"/>
-            </g>
-            {/* ENTER HQ sign — mounted above door, clickable */}
-            <g style={{ cursor: "pointer" }} onClick={onTV}>
-              {/* Outer glow pulse */}
-              <motion.rect x={sx - 4} y={sy - 3} width={sw + 8} height={sh + 6} rx="7"
-                fill="#7c3aed"
-                animate={{ opacity: [0.10, 0.30, 0.10] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                filter="url(#ftvGlow)"
-                style={{ pointerEvents: "none" }}
-              />
-              {/* Sign plaque */}
-              <rect x={sx} y={sy} width={sw} height={sh} rx="5"
-                fill="rgba(5,3,20,0.92)" stroke="#7c3aed" strokeWidth="1.2" strokeOpacity="0.85"/>
-              <text x={CX} y={sy + sh - 4.5} textAnchor="middle"
-                fontSize="6" fontWeight="900"
-                fill="white" opacity="0.95"
-                style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "0.8px", pointerEvents: "none" }}>
-                ✨ ENTER HQ
-              </text>
-            </g>
-          </>
+          <g style={{ pointerEvents: "none" }}>
+            <rect x={dx - 2} y={dy - 2} width={dw + 4} height={dh + 2} rx="5"
+              fill="#7c3aed" opacity="0.12" filter="url(#ftvGlow)"/>
+            <rect x={dx} y={dy} width={dw} height={dh} rx="4"
+              fill="#08071a" stroke="#4c1d95" strokeWidth="1.2"/>
+            <path d={`M${dx},${dy + 11} Q${CX},${dy - 5} ${dx + dw},${dy + 11}`}
+              fill="none" stroke="#7c3aed" strokeWidth="0.9" opacity="0.5"/>
+            <circle cx={dx + dw - 7} cy={dy + 24} r="3" fill="#7c3aed" opacity="0.7"/>
+          </g>
         );
       })()}
 
@@ -847,11 +872,13 @@ export default function IsometricHome() {
       {/* Moon — top right */}
       <Moon />
 
-      {/* House — fills all space, no header */}
+      {/* House — vertically centered between top of screen and toggle bar */}
       <div style={{
-        position: "relative", zIndex: 2, flex: 1, minHeight: 0,
+        position: "relative", zIndex: 2,
+        flex: 1, minHeight: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px 8px 72px",
+        paddingTop: 16, paddingLeft: 8, paddingRight: 8,
+        paddingBottom: 80, // clears the 60px toggle + breathing room
       }}>
         <AnimatePresence mode="wait">
           <motion.div key={view}
