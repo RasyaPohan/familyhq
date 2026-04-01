@@ -415,47 +415,65 @@ function FrontView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }
 }
 
 // ─── VIEW 2: TOP DOWN ─────────────────────────────────────────────────────────
+// Status badge config
+const STATUS_CONFIG = {
+  chores_due: { bg: "#7f1d1d", text: "#fca5a5", label: "⚠️ Chores due" },
+  done:       { bg: "#064e3b", text: "#6ee7b7", label: "✅ Done"       },
+  busy:       { bg: "#1e3a5f", text: "#93c5fd", label: "📅 Busy"       },
+  active:     { bg: "#3b1f5e", text: "#c4b5fd", label: "📸 Active"     },
+  home:       { bg: "#1e293b", text: "#64748b", label: "🏠 Home"       },
+};
+
 function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }) {
   const [hov, setHov] = useState(null);
   const { cols, rows, tvMode, slots } = layout;
 
-  const U = 40;
-  const CX = 200, CY = 230;
+  // U = cell size. We want the grid to fill ~85% of a 400-wide canvas.
+  // Max grid width = cols * U = 0.85 * 400 → U = 340 / cols, min 100
+  const U = Math.max(100, Math.floor(340 / cols));
+  const CX = 200;
+  // Center the grid vertically in a 460-tall viewBox with some top/bottom padding
+  const gridH = rows * U;
+  const CY = 40 + gridH / 2;  // 40px top padding
   const halfCols = cols / 2;
   const halfRows = rows / 2;
 
-  // Convert slot grid coords to SVG coords
+  const VB_H = gridH + 120; // viewBox height: grid + 60px top + 60px bottom for TV bar
+
   function slotRect(slot) {
-    const gx1 = slot.col - halfCols;
-    const gy1 = slot.row - halfRows;
-    const ax = CX + gx1 * U, ay = CY + gy1 * U;
-    const bx = ax + U, by = ay + U;
-    const mx = (ax + bx) / 2, my = (ay + by) / 2;
-    const pw = U - 4, ph = U - 4;
-    return { ax, ay, bx, by, mx, my, pw, ph };
+    const ax = CX + (slot.col - halfCols) * U;
+    const ay = CY + (slot.row - halfRows) * U;
+    const mx = ax + U / 2, my = ay + U / 2;
+    return { ax, ay, mx, my, pw: U - 6, ph: U - 6 };
   }
 
-  const borderX = CX - halfCols * U - 2;
-  const borderY = CY - halfRows * U - 2;
-  const borderW = cols * U + 4;
-  const borderH = rows * U + 4;
+  const borderX = CX - halfCols * U - 3;
+  const borderY = CY - halfRows * U - 3;
+  const borderW = cols * U + 6;
+  const borderH = rows * U + 6;
+
+  // Badge font scales with cell size
+  const badgeFs = Math.max(7, Math.floor(U / 13));
+  const nameFs  = Math.max(9, Math.floor(U / 10));
+  const emojiFs = Math.max(22, Math.floor(U / 4));
 
   return (
-    <svg viewBox="20 50 360 360" width="100%" height="100%" style={{ display: "block", overflow: "visible" }}>
+    <svg viewBox={`${CX - halfCols * U - 24} ${CY - halfRows * U - 36} ${cols * U + 48} ${VB_H}`}
+      width="100%" height="100%" style={{ display: "block", overflow: "visible" }}>
       <defs>
-        <filter id="tdglow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="5" result="b"/>
+        <filter id="tdglow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b"/>
           <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
         <filter id="tdtvGlow" x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="7" result="b"/>
+          <feGaussianBlur stdDeviation="10" result="b"/>
           <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
 
       {/* Outer house border */}
-      <rect x={borderX} y={borderY} width={borderW} height={borderH} rx="6"
-        fill="#090c14" stroke="#1e293b" strokeWidth="2"/>
+      <rect x={borderX} y={borderY} width={borderW} height={borderH} rx="10"
+        fill="#090c14" stroke="#1e293b" strokeWidth="2.5"/>
 
       {/* Room tiles */}
       {slots.map(slot => {
@@ -465,49 +483,58 @@ function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash
         const isTV = slot.type === "tv";
         const isShared = slot.type === "shared";
         const { ax, ay, mx, my, pw, ph } = slotRect(slot);
+        const st = m ? (STATUS_CONFIG[statuses[m.id]] || STATUS_CONFIG.home) : null;
 
         return (
           <g key={slot.slotIndex}>
-            <rect x={ax + 2} y={ay + 2} width={pw} height={ph} rx="4"
+            {/* Room background — vibrant fill */}
+            <rect x={ax + 3} y={ay + 3} width={pw} height={ph} rx="8"
               fill={col}
-              fillOpacity={isShared ? 0.10 : isHov ? 0.42 : 0.20}
+              fillOpacity={isShared ? 0.08 : isHov ? 0.65 : 0.45}
               stroke={col}
-              strokeWidth={isHov ? 2.5 : 1.2}
-              strokeOpacity={isShared ? 0.2 : isHov ? 1 : 0.55}
+              strokeWidth={isHov ? 3 : 1.8}
+              strokeOpacity={isShared ? 0.15 : isHov ? 1 : 0.7}
               filter={isHov ? "url(#tdglow)" : undefined}
-              style={{ transition: "fill-opacity 0.15s" }}/>
+              style={{ transition: "fill-opacity 0.15s, stroke-opacity 0.15s" }}/>
+            {/* Subtle inner highlight */}
+            {!isShared && !isTV && (
+              <rect x={ax + 5} y={ay + 5} width={pw - 4} height={Math.floor(ph * 0.35)} rx="6"
+                fill="white" fillOpacity="0.06"/>
+            )}
 
             {/* TV slot */}
             {isTV && (
               <g style={{ pointerEvents: "none" }}>
-                <rect x={mx - 18} y={my - 11} width="36" height="22" rx="3"
-                  fill={tvColor} opacity={tvFlash ? 0.30 : 0.12}
+                {/* Outer glow */}
+                <rect x={mx - U * 0.32} y={my - U * 0.22} width={U * 0.64} height={U * 0.44} rx="8"
+                  fill={tvColor} opacity={tvFlash ? 0.50 : 0.22}
                   filter="url(#tdtvGlow)" style={{ transition: "opacity 0.22s" }}/>
-                <rect x={mx - 16} y={my - 9} width="32" height="18" rx="2"
-                  fill="#050810" stroke={tvColor} strokeWidth="1.3"/>
-                <text x={mx} y={my + 2} textAnchor="middle" fontSize="5" fontWeight="800"
-                  fill="white" opacity="0.92" style={{ fontFamily: "system-ui,sans-serif" }}>
+                {/* Screen */}
+                <rect x={mx - U * 0.28} y={my - U * 0.18} width={U * 0.56} height={U * 0.36} rx="6"
+                  fill="#050810" stroke={tvColor} strokeWidth="2"/>
+                <text x={mx} y={my + 4} textAnchor="middle"
+                  fontSize={Math.max(8, Math.floor(U / 9))} fontWeight="800"
+                  fill="white" opacity="0.97" style={{ fontFamily: "system-ui,sans-serif" }}>
                   ENTER HQ
                 </text>
               </g>
             )}
 
-            {/* Member label */}
+            {/* Member content */}
             {m && !isTV && (
               <g style={{ pointerEvents: "none" }}>
-                <text x={mx} y={my - 10} textAnchor="middle" fontSize="18"
+                <text x={mx} y={my - U * 0.12} textAnchor="middle" fontSize={emojiFs}
                   style={{ fontFamily: "system-ui" }}>{m.emoji || m.name[0]}</text>
-                <text x={mx} y={my + 8} textAnchor="middle" fontSize="8" fontWeight="700"
+                <text x={mx} y={my + U * 0.18} textAnchor="middle" fontSize={nameFs} fontWeight="700"
                   fill={col} style={{ fontFamily: "system-ui,sans-serif" }}>{m.name}</text>
-                {statuses[m.id] && (
+                {st && (
                   <>
-                    <rect x={mx - 17} y={my + 11} width="34" height="11" rx="5.5"
-                      fill={statuses[m.id] === "busy" ? "#7f1d1d" : statuses[m.id] === "done" ? "#064e3b" : "#1e293b"}
-                      opacity="0.92"/>
-                    <text x={mx} y={my + 19} textAnchor="middle" fontSize="5.5" fontWeight="700"
-                      fill={statuses[m.id] === "busy" ? "#fca5a5" : statuses[m.id] === "done" ? "#6ee7b7" : "#64748b"}
+                    <rect x={mx - U * 0.38} y={my + U * 0.26} width={U * 0.76} height={badgeFs + 8} rx={badgeFs / 2 + 2}
+                      fill={st.bg} opacity="0.95"/>
+                    <text x={mx} y={my + U * 0.26 + badgeFs + 2} textAnchor="middle"
+                      fontSize={badgeFs} fontWeight="700" fill={st.text}
                       style={{ fontFamily: "system-ui,sans-serif" }}>
-                      {statuses[m.id] === "busy" ? "Busy" : statuses[m.id] === "done" ? "✓ Done" : "Home"}
+                      {st.label}
                     </text>
                   </>
                 )}
@@ -517,17 +544,17 @@ function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash
             {/* Shared space */}
             {isShared && (
               <g style={{ pointerEvents: "none" }}>
-                <text x={mx} y={my + 5} textAnchor="middle" fontSize="16"
+                <text x={mx} y={my + 6} textAnchor="middle" fontSize={emojiFs}
                   style={{ fontFamily: "system-ui" }}>{SHARED_EMOJI[slot.sharedType]}</text>
-                <text x={mx} y={my + 17} textAnchor="middle" fontSize="6" fontWeight="600"
-                  fill="rgba(255,255,255,0.2)" style={{ fontFamily: "system-ui,sans-serif" }}>
+                <text x={mx} y={my + U * 0.32} textAnchor="middle" fontSize={nameFs - 1} fontWeight="600"
+                  fill="rgba(255,255,255,0.22)" style={{ fontFamily: "system-ui,sans-serif" }}>
                   {SHARED_LABEL[slot.sharedType]}
                 </text>
               </g>
             )}
 
-            {/* Hit */}
-            <rect x={ax + 2} y={ay + 2} width={pw} height={ph} rx="4"
+            {/* Hit area */}
+            <rect x={ax + 3} y={ay + 3} width={pw} height={ph} rx="8"
               fill="transparent" stroke="transparent"
               style={{ cursor: (m || isTV) ? "pointer" : "default" }}
               onClick={() => isTV ? onTV() : m && onRoom(m)}
@@ -539,18 +566,20 @@ function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash
 
       {/* TV overlay center (4 or 6 members) */}
       {tvMode === "overlay-center" && (() => {
-        const stripY = CY - 12;
+        const stripY = CY - U * 0.16;
+        const stripH = U * 0.32;
         return (
           <g style={{ cursor: "pointer" }} onClick={onTV}>
-            <rect x={borderX + 4} y={stripY} width={borderW - 8} height={24} rx="6"
-              fill="rgba(5,8,16,0.88)" stroke={tvColor} strokeWidth="1.2" strokeOpacity="0.5"/>
+            <rect x={borderX + 4} y={stripY} width={borderW - 8} height={stripH} rx="8"
+              fill="rgba(5,8,16,0.92)" stroke={tvColor} strokeWidth="1.5" strokeOpacity="0.6"/>
             <g style={{ pointerEvents: "none" }}>
-              <rect x={CX - 16} y={stripY + 3} width="32" height="18" rx="2"
-                fill={tvColor} opacity={tvFlash ? 0.25 : 0.10} filter="url(#tdtvGlow)"/>
-              <rect x={CX - 14} y={stripY + 5} width="28" height="14" rx="2"
-                fill="#050810" stroke={tvColor} strokeWidth="1"/>
-              <text x={CX} y={stripY + 14} textAnchor="middle" fontSize="4.5" fontWeight="800"
-                fill="white" opacity="0.9" style={{ fontFamily: "system-ui,sans-serif" }}>
+              <rect x={CX - U * 0.22} y={stripY + 4} width={U * 0.44} height={stripH - 8} rx="5"
+                fill={tvColor} opacity={tvFlash ? 0.35 : 0.15} filter="url(#tdtvGlow)"/>
+              <rect x={CX - U * 0.20} y={stripY + 6} width={U * 0.40} height={stripH - 12} rx="4"
+                fill="#050810" stroke={tvColor} strokeWidth="1.2"/>
+              <text x={CX} y={stripY + stripH / 2 + 4} textAnchor="middle"
+                fontSize={Math.max(7, Math.floor(U / 10))} fontWeight="800"
+                fill="white" opacity="0.95" style={{ fontFamily: "system-ui,sans-serif" }}>
                 ENTER HQ
               </text>
             </g>
@@ -560,18 +589,20 @@ function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash
 
       {/* TV external bottom (2 members) */}
       {tvMode === "external-bottom" && (() => {
-        const barY = CY + halfRows * U + 12;
+        const barY = CY + halfRows * U + 14;
+        const barH = Math.max(36, U * 0.4);
         return (
           <g style={{ cursor: "pointer" }} onClick={onTV}>
-            <rect x={borderX + 4} y={barY} width={borderW - 8} height={28} rx="7"
-              fill="rgba(5,8,16,0.9)" stroke={tvColor} strokeWidth="1.2" strokeOpacity="0.55"/>
+            <rect x={borderX + 4} y={barY} width={borderW - 8} height={barH} rx="9"
+              fill="rgba(5,8,16,0.92)" stroke={tvColor} strokeWidth="1.5" strokeOpacity="0.6"/>
             <g style={{ pointerEvents: "none" }}>
-              <rect x={CX - 16} y={barY + 5} width="32" height="18" rx="2"
-                fill={tvColor} opacity={tvFlash ? 0.25 : 0.10} filter="url(#tdtvGlow)"/>
-              <rect x={CX - 14} y={barY + 7} width="28" height="14" rx="2"
-                fill="#050810" stroke={tvColor} strokeWidth="1"/>
-              <text x={CX} y={barY + 16} textAnchor="middle" fontSize="4.5" fontWeight="800"
-                fill="white" opacity="0.9" style={{ fontFamily: "system-ui,sans-serif" }}>
+              <rect x={CX - U * 0.22} y={barY + 5} width={U * 0.44} height={barH - 10} rx="5"
+                fill={tvColor} opacity={tvFlash ? 0.35 : 0.15} filter="url(#tdtvGlow)"/>
+              <rect x={CX - U * 0.20} y={barY + 7} width={U * 0.40} height={barH - 14} rx="4"
+                fill="#050810" stroke={tvColor} strokeWidth="1.2"/>
+              <text x={CX} y={barY + barH / 2 + 5} textAnchor="middle"
+                fontSize={Math.max(7, Math.floor(U / 10))} fontWeight="800"
+                fill="white" opacity="0.95" style={{ fontFamily: "system-ui,sans-serif" }}>
                 ENTER HQ
               </text>
             </g>
@@ -586,17 +617,13 @@ function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash
           <line key={c}
             x1={lx} y1={CY - halfRows * U}
             x2={lx} y2={CY + halfRows * U}
-            stroke="rgba(255,255,255,0.07)" strokeWidth="1.5"/>
+            stroke="rgba(255,255,255,0.08)" strokeWidth="2"/>
         );
       })}
       {rows > 1 && (
         <line x1={CX - halfCols * U} y1={CY} x2={CX + halfCols * U} y2={CY}
-          stroke="rgba(255,255,255,0.07)" strokeWidth="1.5"/>
+          stroke="rgba(255,255,255,0.08)" strokeWidth="2"/>
       )}
-
-      {/* Compass */}
-      <text x="358" y="75" textAnchor="middle" fontSize="9" fontWeight="600"
-        fill="rgba(255,255,255,0.25)" style={{ fontFamily: "system-ui,sans-serif" }}>N ↑</text>
     </svg>
   );
 }
@@ -645,12 +672,27 @@ export default function IsometricHome() {
     Promise.all([
       db.CalendarEvent.filter({ family_code: familyCode }),
       db.Chore.filter({ family_code: familyCode }),
-    ]).then(([events, chores]) => {
+      db.FamilyPhoto.filter({ family_code: familyCode }),
+    ]).then(([events, chores, photos]) => {
       const s = {};
       for (const m of members) {
-        const busy = events.some(e => (e.date || e.start_date || "").slice(0, 10) === today);
-        const done = chores.some(c => c.completed && c.assigned_to === m.id);
-        s[m.id] = busy ? "busy" : done ? "done" : "home";
+        const hasEvent = events.some(e => (e.date || e.start_date || "").slice(0, 10) === today);
+        const myChores = chores.filter(c => c.assigned_to === m.id);
+        const dueToday = myChores.filter(c => {
+          const d = (c.due_date || c.date || "").slice(0, 10);
+          return d === today || !d;
+        });
+        const allDone = dueToday.length > 0 && dueToday.every(c => c.completed);
+        const hasOverdue = dueToday.some(c => !c.completed);
+        const postedToday = photos.some(p =>
+          p.uploaded_by === m.id && (p.created_at || "").slice(0, 10) === today
+        );
+
+        if (hasOverdue) s[m.id] = "chores_due";
+        else if (allDone) s[m.id] = "done";
+        else if (hasEvent) s[m.id] = "busy";
+        else if (postedToday) s[m.id] = "active";
+        else s[m.id] = "home";
       }
       setStatuses(s);
     }).catch(() => {});
