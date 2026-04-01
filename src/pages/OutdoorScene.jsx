@@ -32,6 +32,17 @@ export default function OutdoorScene() {
   const [zooming, setZooming] = useState(false);
   const [hintVisible, setHintVisible] = useState(false);
   const [doorGlow, setDoorGlow] = useState(false);
+  const [petBubble, setPetBubble] = useState(false);
+  const petBubbleTimer = useRef(null);
+
+  const PET_GREETINGS = [
+    "Welcome home! 🐾",
+    "Finally, you're back! 😸",
+    "I missed you! 🐱",
+    "Ready to go inside? 🏠",
+    "The family is waiting! ✨",
+  ];
+  const petGreeting = useRef(PET_GREETINGS[Math.floor(Math.random() * PET_GREETINGS.length)]);
 
   useEffect(() => {
     if (!familyCode) { navigate("/", { replace: true }); return; }
@@ -100,7 +111,7 @@ export default function OutdoorScene() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "absolute",
-          top: "24%",
+          top: "8%",
           left: 0,
           right: 0,
           zIndex: 5,
@@ -351,14 +362,6 @@ export default function OutdoorScene() {
           <text x="200" y="303" textAnchor="middle" fontSize="6" fontWeight="700"
             fill="#94a3b8" style={{ fontFamily: "system-ui,sans-serif" }}>HQ</text>
 
-          {/* ── Garage door ── */}
-          <rect x="100" y="310" width="55" height="63" rx="2" fill="#0f1520" stroke="#1e293b" strokeWidth="1"/>
-          {[0,1,2,3].map(i=>(
-            <line key={i} x1="101" y1={320+i*11} x2="154" y2={320+i*11}
-              stroke="#1e293b" strokeWidth="0.8" opacity="0.7"/>
-          ))}
-          <circle cx="128" cy="345" r="2.5" fill="#374151"/>
-
           {/* ── Gutter / wall details ── */}
           <line x1="100" y1="230" x2="100" y2="370" stroke="#1e293b" strokeWidth="1" opacity="0.5"/>
           <line x1="300" y1="230" x2="300" y2="370" stroke="#1e293b" strokeWidth="1" opacity="0.5"/>
@@ -466,6 +469,30 @@ export default function OutdoorScene() {
             </g>
           ))}
 
+          {/* ── Pet egg on lawn (right of driveway) ── */}
+          <g
+            style={{ cursor: "pointer" }}
+            onClick={e => {
+              e.stopPropagation();
+              clearTimeout(petBubbleTimer.current);
+              setPetBubble(true);
+              petBubbleTimer.current = setTimeout(() => setPetBubble(false), 2500);
+            }}
+          >
+            {/* Shadow */}
+            <ellipse cx="278" cy="376" rx="9" ry="3" fill="rgba(0,0,0,0.35)"/>
+            {/* Egg body */}
+            <ellipse cx="278" cy="366" rx="9" ry="11" fill="#fef3c7" stroke="#fcd34d" strokeWidth="1"/>
+            {/* Egg crack */}
+            <path d="M275,358 L277,362 L275,365" stroke="#fbbf24" strokeWidth="0.8" strokeLinecap="round" fill="none"/>
+            <path d="M281,357 L280,360" stroke="#fbbf24" strokeWidth="0.8" strokeLinecap="round" fill="none"/>
+            {/* Eyes peeking */}
+            <circle cx="275" cy="365" r="1.2" fill="#1e1b4b"/>
+            <circle cx="281" cy="365" r="1.2" fill="#1e1b4b"/>
+            <circle cx="275.4" cy="364.6" r="0.4" fill="white"/>
+            <circle cx="281.4" cy="364.6" r="0.4" fill="white"/>
+          </g>
+
           {/* ── FAMILY CAR ── */}
           <g>
             {/* Car shadow */}
@@ -519,12 +546,6 @@ export default function OutdoorScene() {
 
             {/* Tail lights */}
             <rect x="240" y="447" width="8" height="5" rx="1.5" fill="#ef4444" opacity="0.7"/>
-
-            {/* Family name on car side */}
-            <text x="192" y="455" textAnchor="middle" fontSize="6" fontWeight="700"
-              fill="white" opacity="0.35" style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "1px" }}>
-              {rawName.toUpperCase()}
-            </text>
 
             {/* Door line */}
             <line x1="192" y1="441" x2="192" y2="462" stroke="white" strokeWidth="0.5" opacity="0.15"/>
@@ -606,6 +627,50 @@ export default function OutdoorScene() {
           />
         ))}
       </motion.div>
+
+      {/* ── Pet speech bubble ── */}
+      <AnimatePresence>
+        {petBubble && (
+          <motion.div
+            key="petbubble"
+            initial={{ opacity: 0, y: 6, scale: 0.88 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.88 }}
+            transition={{ type: "spring", stiffness: 420, damping: 28 }}
+            style={{
+              position: "absolute",
+              // Pet is at ~70% from left, ~72% from top in the SVG (x=278/400, y=355/520)
+              left: "calc(70% - 80px)",
+              top: "calc(72% - 52px)",
+              zIndex: 6,
+              pointerEvents: "none",
+            }}
+          >
+            <div style={{
+              background: "#1a1a2e",
+              border: "1px solid rgba(167,139,250,0.45)",
+              borderRadius: 12,
+              padding: "8px 12px",
+              color: "rgba(255,255,255,0.92)",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "system-ui, sans-serif",
+              whiteSpace: "nowrap",
+              boxShadow: "0 0 12px rgba(139,92,246,0.25)",
+            }}>
+              {petGreeting.current}
+            </div>
+            {/* Triangle pointer down-left toward pet */}
+            <div style={{
+              position: "absolute", bottom: -7, left: 18,
+              width: 0, height: 0,
+              borderLeft: "7px solid transparent",
+              borderRight: "7px solid transparent",
+              borderTop: "7px solid #1a1a2e",
+            }}/>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Tap hint ── */}
       <AnimatePresence>
