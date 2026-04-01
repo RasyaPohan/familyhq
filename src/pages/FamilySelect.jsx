@@ -16,28 +16,19 @@ import AnimatedLogo from "@/components/AnimatedLogo";
 
 const EMOJI_OPTIONS = ["😎","👩","👨","🧑","👧","👦","🦸","🧙","🎮","⚡","🌟","🦊","🐱","🦄","🎨","🎵"];
 
-// Animated gradient orbs for background
+// Static gradient orbs — no animation to avoid constant repaints on this page
 function BackgroundOrbs() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Primary large orb — top right */}
-      <motion.div
-        animate={{ x: [0, 30, -20, 0], y: [0, -20, 30, 0], scale: [1, 1.08, 0.95, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      <div
         className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full"
         style={{ background: "radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)" }}
       />
-      {/* Secondary orb — bottom left */}
-      <motion.div
-        animate={{ x: [0, -25, 15, 0], y: [0, 25, -15, 0], scale: [1, 0.92, 1.1, 1] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+      <div
         className="absolute -bottom-48 -left-48 w-[480px] h-[480px] rounded-full"
         style={{ background: "radial-gradient(circle, rgba(236,72,153,0.14) 0%, transparent 70%)" }}
       />
-      {/* Accent orb — center */}
-      <motion.div
-        animate={{ x: [0, 20, -30, 0], y: [0, -30, 20, 0], scale: [1, 1.12, 0.9, 1] }}
-        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut", delay: 7 }}
+      <div
         className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full"
         style={{ background: "radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)" }}
       />
@@ -66,6 +57,7 @@ export default function FamilySelect() {
   const [showEditFamily, setShowEditFamily] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentActiveMember, setCurrentActiveMember] = useState(null);
+  const [navigating, setNavigating] = useState(false);
   const familyCode = getFamilyCode();
   const [displayFamilyName, setDisplayFamilyName] = useState(getFamilyName());
 
@@ -82,6 +74,8 @@ export default function FamilySelect() {
   };
 
   const handleSelect = (member) => {
+    if (navigating) return; // prevent double-tap
+    setNavigating(true);
     setActiveMember(member);
     window.dispatchEvent(new Event('member-changed'));
     if (!isOnboarded(member.id)) startOnboarding(member);

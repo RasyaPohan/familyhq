@@ -615,21 +615,30 @@ export default function FamilyPet() {
       `Generate one short funny/warm/relevant message the pet would say right now. Be specific to this family's actual data. Max 2 sentences.`,
     ].filter(Boolean).join(" ");
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 100,
-        system: "You are a cute family pet living inside a family app. You are playful, funny, warm and slightly sassy. You speak in short punchy sentences — max 2 sentences. You know everything about this family and give relevant, specific, funny observations. Never be generic.",
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    let res;
+    try {
+      res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 100,
+          system: "You are a cute family pet living inside a family app. You are playful, funny, warm and slightly sassy. You speak in short punchy sentences — max 2 sentences. You know everything about this family and give relevant, specific, funny observations. Never be generic.",
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -648,27 +657,29 @@ export default function FamilyPet() {
     const canCallAI = ANTHROPIC_API_KEY && sinceLastAI >= AI_COOLDOWN_MS;
 
     if (canCallAI) {
-      // ── AI path: thinking animation first, then message ──
-      setPetState("idle"); // reset any previous anim
+      // ── AI path: show thinking immediately, fetch in background ──
+      setPetState("idle");
       setIsAIThinking(true);
-      showBubble("...", "thinking", 30_000); // placeholder while loading
+      showBubble("...", "thinking", 30_000);
 
-      gatherContext().then(ctx => {
-        aiContext.current = ctx;
-        setMood(deriveMood(ctx));
-        return fetchAIMessage(ctx);
-      }).then(text => {
-        if (!text) throw new Error("empty");
-        lastAICallTime.current = Date.now();
-        setIsAIThinking(false);
-        showBubble(text, "ai", 5000);
-        setPetState("happy");
-        setTimeout(() => setPetState("idle"), 2400);
-      }).catch(() => {
-        // Fallback to pre-written message
-        setIsAIThinking(false);
-        playLocalReaction();
-      });
+      // Use setTimeout(0) so the UI commits the thinking state before async work starts
+      setTimeout(async () => {
+        try {
+          const ctx = await gatherContext();
+          aiContext.current = ctx;
+          setMood(deriveMood(ctx));
+          const text = await fetchAIMessage(ctx);
+          if (!text) throw new Error("empty");
+          lastAICallTime.current = Date.now();
+          setIsAIThinking(false);
+          showBubble(text, "ai", 5000);
+          setPetState("happy");
+          setTimeout(() => setPetState("idle"), 2400);
+        } catch {
+          setIsAIThinking(false);
+          playLocalReaction();
+        }
+      }, 0);
 
     } else if (sinceLastAI < AI_COOLDOWN_MS && lastAICallTime.current > 0) {
       // Tapped too soon after AI — show cooldown nudge
