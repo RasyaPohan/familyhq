@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/lib/db";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,7 +58,6 @@ export default function FamilySelect() {
   const [editMode, setEditMode] = useState(false);
   const [currentActiveMember, setCurrentActiveMember] = useState(null);
   const [navigating, setNavigating] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const familyCode = getFamilyCode();
   const [displayFamilyName, setDisplayFamilyName] = useState(getFamilyName());
 
@@ -80,8 +79,7 @@ export default function FamilySelect() {
     setActiveMember(member);
     window.dispatchEvent(new Event('member-changed'));
     if (!isOnboarded(member.id)) startOnboarding(member);
-    // startTransition keeps the current page visible while OutdoorScene chunk loads
-    startTransition(() => { navigate('/outdoor'); });
+    navigate('/outdoor');
   };
 
   const handleAddMember = async () => {

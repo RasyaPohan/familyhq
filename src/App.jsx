@@ -29,12 +29,17 @@ const RewardsPage     = lazy(() => import('./pages/RewardsPage'));
 const GuidePage       = lazy(() => import('./pages/GuidePage'));
 const MomentsPage     = lazy(() => import('./pages/MomentsPage'));
 
-// Minimal fallback — keeps the current page visible instead of grey
-function PageFallback() {
+// Wrap a lazy component so it has its own Suspense — prevents the whole
+// Routes tree from suspending and unmounting the current page.
+function LazyPage({ component: Component }) {
   return (
-    <div className="flex-1 flex items-center justify-center min-h-screen">
-      <div className="w-6 h-6 rounded-full border-2 border-purple-500/40 border-t-purple-400 animate-spin" />
-    </div>
+    <Suspense fallback={
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full border-2 border-purple-500/30 border-t-purple-400 animate-spin" />
+      </div>
+    }>
+      <Component />
+    </Suspense>
   );
 }
 
@@ -63,30 +68,28 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <Suspense fallback={<PageFallback />}>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/create-hq" element={<CreateHQFlow />} />
-        <Route path="/join-hq" element={<JoinHQFlow />} />
-        <Route path="/pin" element={<PinScreen />} />
-        <Route path="/select" element={<FamilySelect />} />
-        <Route path="/outdoor" element={<OutdoorScene />} />
-        <Route path="/home" element={<IsometricHome />} />
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/chores" element={<ChoresPage />} />
-          <Route path="/meals" element={<MealsPage />} />
-          <Route path="/budget" element={<BudgetPage />} />
-          <Route path="/noticeboard" element={<NoticeboardPage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/rewards" element={<RewardsPage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route path="/moments" element={<MomentsPage />} />
-        </Route>
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/create-hq" element={<LazyPage component={CreateHQFlow} />} />
+      <Route path="/join-hq" element={<LazyPage component={JoinHQFlow} />} />
+      <Route path="/pin" element={<PinScreen />} />
+      <Route path="/select" element={<FamilySelect />} />
+      <Route path="/outdoor" element={<LazyPage component={OutdoorScene} />} />
+      <Route path="/home" element={<LazyPage component={IsometricHome} />} />
+      <Route element={<Layout />}>
+        <Route path="/dashboard" element={<LazyPage component={Dashboard} />} />
+        <Route path="/calendar" element={<LazyPage component={CalendarPage} />} />
+        <Route path="/chores" element={<LazyPage component={ChoresPage} />} />
+        <Route path="/meals" element={<LazyPage component={MealsPage} />} />
+        <Route path="/budget" element={<LazyPage component={BudgetPage} />} />
+        <Route path="/noticeboard" element={<LazyPage component={NoticeboardPage} />} />
+        <Route path="/goals" element={<LazyPage component={GoalsPage} />} />
+        <Route path="/rewards" element={<LazyPage component={RewardsPage} />} />
+        <Route path="/guide" element={<LazyPage component={GuidePage} />} />
+        <Route path="/moments" element={<LazyPage component={MomentsPage} />} />
+      </Route>
+      <Route path="*" element={<PageNotFound />} />
+    </Routes>
   );
 };
 

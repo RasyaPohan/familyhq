@@ -34,6 +34,7 @@ const ONBOARDING_KEY = 'hq_onboarding';
 
 export function startOnboarding(member) {
   localStorage.setItem(ONBOARDING_KEY, JSON.stringify({ memberId: member.id, role: member.role, step: 0 }));
+  window.dispatchEvent(new Event("onboarding-changed"));
 }
 
 export function clearOnboarding() {
@@ -61,17 +62,23 @@ export default function OnboardingWizard() {
   const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const navigate = useNavigate();
 
-  // Poll localStorage for changes (e.g. when FamilySelect starts onboarding)
+  // Listen for localStorage changes (e.g. when FamilySelect starts onboarding)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const onStorage = () => {
       const fresh = getOnboardingState();
       setState(prev => {
         const prevStr = JSON.stringify(prev);
         const freshStr = JSON.stringify(fresh);
         return prevStr !== freshStr ? fresh : prev;
       });
-    }, 300);
-    return () => clearInterval(interval);
+    };
+    // storage event fires in other tabs; custom event for same-tab changes
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("onboarding-changed", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("onboarding-changed", onStorage);
+    };
   }, []);
 
   if (!state) return null;
