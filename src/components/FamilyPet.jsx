@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/db";
-import { getActiveMember, getFamilyCode } from "@/lib/familyStore";
+import { getActiveMember, getFamilyCode, getFamilyName } from "@/lib/familyStore";
 import confetti from "canvas-confetti";
+
+const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+const AI_COOLDOWN_MS = 30_000; // 30 seconds between AI calls
 
 // ─── Evolution stages ──────────────────────────────────────────────────────────
 const STAGES = [
@@ -319,6 +322,26 @@ function PetModal({ children, onClose }) {
 const PET_NAME_KEY = "hq_pet_name";
 const PET_STAGE_KEY = "hq_pet_last_stage";
 const LAST_INTERACTION_KEY = "hq_last_interaction";
+const LAST_AI_MSG_KEY = "hq_pet_last_ai_msg";
+
+// ── Mood system ───────────────────────────────────────────────────────────────
+// Mood is derived from live family data when context is gathered.
+// It affects the bubble border color only — a subtle signal, not intrusive.
+const MOODS = {
+  proud:   { color: "rgba(251,191,36,0.55)",  label: "proud"   }, // gold  — lots of XP/chores done
+  curious: { color: "rgba(167,139,250,0.45)", label: "curious" }, // purple — default / neutral
+  worried: { color: "rgba(239,68,68,0.45)",   label: "worried" }, // red   — 0 chores done late in day
+  playful: { color: "rgba(52,211,153,0.45)",  label: "playful" }, // green — morning / photo posted recently
+};
+
+function deriveMood(ctx) {
+  const hour = ctx.hour ?? new Date().getHours();
+  const doneRatio = ctx.totalChores > 0 ? ctx.doneToday / ctx.totalChores : 0;
+  if (hour >= 18 && doneRatio === 0 && ctx.totalChores > 0) return MOODS.worried;
+  if (doneRatio >= 0.8) return MOODS.proud;
+  if (hour < 12 || (ctx.daysSincePhoto != null && ctx.daysSincePhoto <= 1)) return MOODS.playful;
+  return MOODS.curious;
+}
 
 export default function FamilyPet() {
   const familyCode = getFamilyCode();
@@ -334,6 +357,8 @@ export default function FamilyPet() {
   const [showLongPress, setShowLongPress] = useState(false);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [angryFlash, setAngryFlash] = useState(false); // red overlay on egg
+  const [isAIThinking, setIsAIThinking] = useState(false);
+  const [mood, setMood] = useState(MOODS.curious);
 
   const sleepTimer = useRef(null);
   const moveTimer = useRef(null);
@@ -342,6 +367,9 @@ export default function FamilyPet() {
   const tapTimer = useRef(null);
   const bubbleTimer = useRef(null);
   const lastReactionIdx = useRef(-1); // prevent same animation twice in a row
+  const lastAICallTime = useRef(0); // timestamp of last successful AI call
+  // Cached context data for AI prompt (refreshed on each tap)
+  const aiContext = useRef({});
 
   // ── Load family XP & check evolution ──────────────────────────────────────
   useEffect(() => {
@@ -376,14 +404,30 @@ export default function FamilyPet() {
   useEffect(() => {
     const onXp = (e) => {
       const amount = e.detail?.amount || 0;
+      const memberName = e.detail?.memberName || "";
       setPetState("excited");
-      showBubble(`+${amount} XP! Keep going! ⚡`, "xp");
+      // Show instant local message first, then optionally follow with AI
+      showBubble(`+${amount} XP! Keep going! ⚡`, "xp", 3000);
       setTimeout(() => setPetState("happy"), 2000);
       setTimeout(() => setPetState("idle"), 4000);
+
+      // If we can call AI without breaking cooldown, fire a follow-up reaction
+      if (ANTHROPIC_API_KEY && Date.now() - lastAICallTime.current >= AI_COOLDOWN_MS) {
+        setTimeout(async () => {
+          try {
+            const ctx = await gatherContext();
+            const text = await fetchAIMessage(ctx, `${memberName} just earned ${amount} XP`);
+            if (text) {
+              lastAICallTime.current = Date.now();
+              showBubble(text, "ai", 6000);
+            }
+          } catch { /* silent */ }
+        }, 3200); // fire after the local message fades
+      }
     };
     window.addEventListener("xp-earned", onXp);
     return () => window.removeEventListener("xp-earned", onXp);
-  }, [petName]);
+  }, [petName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sleep timer ───────────────────────────────────────────────────────────
   const resetSleepTimer = useCallback(() => {
@@ -408,18 +452,61 @@ export default function FamilyPet() {
     return () => clearInterval(moveTimer.current);
   }, []);
 
-  // ── Contextual morning greeting ───────────────────────────────────────────
+  // ── AI morning greeting (once per day, 06:00–11:00) ─────────────────────
   useEffect(() => {
-    if (!petName || !member) return;
+    if (!petName || !member || !familyCode) return;
     const hour = new Date().getHours();
-    const shownKey = `hq_pet_greeted_${new Date().toDateString()}`;
-    if (!localStorage.getItem(shownKey) && hour >= 6 && hour < 11) {
-      localStorage.setItem(shownKey, "1");
-      setTimeout(() => {
+    const greetKey = `hq_pet_greeted_${new Date().toDateString()}`;
+    if (localStorage.getItem(greetKey) || hour < 6 || hour >= 11) return;
+    localStorage.setItem(greetKey, "1");
+
+    setTimeout(async () => {
+      if (!ANTHROPIC_API_KEY) {
         showBubble(`Good morning, ${member.name}! 🌅 Check your chores today~`, "greeting");
-      }, 3000);
-    }
-  }, [petName, member]);
+        return;
+      }
+      try {
+        const ctx = await gatherContext();
+        setMood(deriveMood(ctx));
+        const text = await fetchAIMessage(ctx, "morning greeting");
+        if (text) { showBubble(text, "ai", 7000); setPetState("happy"); setTimeout(() => setPetState("idle"), 2400); }
+      } catch {
+        showBubble(`Good morning, ${member.name}! 🌅`, "greeting");
+      }
+    }, 3500);
+  }, [petName, member, familyCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Proactive 6pm nudge — once per day if chores undone ──────────────────
+  useEffect(() => {
+    if (!petName || !member || !familyCode || !ANTHROPIC_API_KEY) return;
+    const nudgeKey = `hq_pet_nudge_${new Date().toDateString()}`;
+    if (localStorage.getItem(nudgeKey)) return;
+
+    // Check every minute whether it's past 18:00 and nudge hasn't fired yet
+    const interval = setInterval(async () => {
+      const h = new Date().getHours();
+      if (h < 18) return;
+      clearInterval(interval);
+      if (localStorage.getItem(nudgeKey)) return;
+      localStorage.setItem(nudgeKey, "1");
+
+      try {
+        const ctx = await gatherContext();
+        const newMood = deriveMood(ctx);
+        setMood(newMood);
+        if (ctx.totalChores > 0 && ctx.doneToday < ctx.totalChores) {
+          const text = await fetchAIMessage(ctx, "evening nudge about unfinished chores");
+          if (text) {
+            showBubble(text, "ai", 8000);
+            setPetState("excited");
+            setTimeout(() => setPetState("idle"), 3000);
+          }
+        }
+      } catch { /* silent */ }
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, [petName, member, familyCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function showBubble(text, type = "idle", duration = 5000) {
     clearTimeout(bubbleTimer.current);
@@ -438,11 +525,164 @@ export default function FamilyPet() {
     setTimeout(() => setPetState("idle"), 4000);
   }
 
+  // ── Gather live context for AI prompt ────────────────────────────────────
+  const gatherContext = useCallback(async () => {
+    if (!familyCode) return {};
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const hour = now.getHours();
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    try {
+      const [chores, events, photos] = await Promise.all([
+        db.Chore.filter({ family_code: familyCode }),
+        db.CalendarEvent.filter({ family_code: familyCode }),
+        db.FamilyPhoto.filter({ family_code: familyCode }),
+      ]);
+
+      const doneToday = chores.filter(c => c.completed).length;
+      const totalChores = chores.filter(c => {
+        const due = c.due_date || c.date || "";
+        return due.slice(0, 10) === today || !due;
+      }).length;
+
+      const upcomingEvents = events
+        .filter(e => (e.date || e.start_date || "") >= today)
+        .sort((a, b) => (a.date || a.start_date || "").localeCompare(b.date || b.start_date || ""))
+        .slice(0, 1);
+      const nextEvent = upcomingEvents[0];
+      const nextEventStr = nextEvent
+        ? `"${nextEvent.title}" on ${nextEvent.date || nextEvent.start_date}`
+        : "none upcoming";
+
+      const lastPhoto = photos.sort((a, b) =>
+        new Date(b.created_at) - new Date(a.created_at)
+      )[0];
+      const daysSincePhoto = lastPhoto
+        ? Math.floor((Date.now() - new Date(lastPhoto.created_at)) / 86_400_000)
+        : null;
+      const photoStr = daysSincePhoto != null
+        ? `${daysSincePhoto} day${daysSincePhoto !== 1 ? "s" : ""} ago`
+        : "never";
+
+      return {
+        familyName: getFamilyName().replace(/\s*(HQ|Family HQ)$/i, "").trim() || "Family",
+        memberName: member?.name ?? "Someone",
+        memberRole: member?.role ?? "Member",
+        timeStr,
+        hour,
+        doneToday,
+        totalChores,
+        nextEventStr,
+        photoStr,
+        daysSincePhoto,
+        totalXp,
+        petName: petName || "the pet",
+        stageLabel: stage.label,
+      };
+    } catch {
+      return {
+        familyName: getFamilyName().replace(/\s*(HQ|Family HQ)$/i, "").trim() || "Family",
+        memberName: member?.name ?? "Someone",
+        memberRole: member?.role ?? "Member",
+        timeStr,
+        hour: new Date().getHours(),
+        totalXp,
+        petName: petName || "the pet",
+        stageLabel: stage.label,
+      };
+    }
+  }, [familyCode, member, totalXp, petName, stage]);
+
+  // ── Fetch AI message from Claude ──────────────────────────────────────────
+  const fetchAIMessage = useCallback(async (ctx, hint = "") => {
+    if (!ANTHROPIC_API_KEY) throw new Error("No API key");
+
+    const lastMsg = localStorage.getItem(LAST_AI_MSG_KEY) || "";
+    const userPrompt = [
+      `Family name: ${ctx.familyName}.`,
+      `Current user: ${ctx.memberName}, role: ${ctx.memberRole}.`,
+      `Time: ${ctx.timeStr}.`,
+      ctx.totalChores != null
+        ? `Today's chores completed: ${ctx.doneToday} of ${ctx.totalChores}.`
+        : "",
+      ctx.nextEventStr ? `Upcoming events: ${ctx.nextEventStr}.` : "",
+      ctx.photoStr ? `Last moment posted: ${ctx.photoStr}.` : "",
+      `Family XP total: ${ctx.totalXp}.`,
+      `Pet name: ${ctx.petName}, evolution stage: ${ctx.stageLabel}.`,
+      hint ? `Context hint: ${hint}.` : "",
+      lastMsg ? `Do NOT repeat or closely echo this previous message you said: "${lastMsg}".` : "",
+      `Generate one short funny/warm/relevant message the pet would say right now. Be specific to this family's actual data. Max 2 sentences.`,
+    ].filter(Boolean).join(" ");
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 100,
+        system: "You are a cute family pet living inside a family app. You are playful, funny, warm and slightly sassy. You speak in short punchy sentences — max 2 sentences. You know everything about this family and give relevant, specific, funny observations. Never be generic.",
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const text = data.content?.[0]?.text?.trim() ?? null;
+    if (text) localStorage.setItem(LAST_AI_MSG_KEY, text);
+    return text;
+  }, []);
+
   // ── Tap handling ──────────────────────────────────────────────────────────
   const handleTap = () => {
     resetSleepTimer();
+    if (isAIThinking) return; // ignore taps while AI is loading
 
-    // Pick a random reaction that isn't the same animation as last time
+    const now = Date.now();
+    const sinceLastAI = now - lastAICallTime.current;
+    const canCallAI = ANTHROPIC_API_KEY && sinceLastAI >= AI_COOLDOWN_MS;
+
+    if (canCallAI) {
+      // ── AI path: thinking animation first, then message ──
+      setPetState("idle"); // reset any previous anim
+      setIsAIThinking(true);
+      showBubble("...", "thinking", 30_000); // placeholder while loading
+
+      gatherContext().then(ctx => {
+        aiContext.current = ctx;
+        setMood(deriveMood(ctx));
+        return fetchAIMessage(ctx);
+      }).then(text => {
+        if (!text) throw new Error("empty");
+        lastAICallTime.current = Date.now();
+        setIsAIThinking(false);
+        showBubble(text, "ai", 5000);
+        setPetState("happy");
+        setTimeout(() => setPetState("idle"), 2400);
+      }).catch(() => {
+        // Fallback to pre-written message
+        setIsAIThinking(false);
+        playLocalReaction();
+      });
+
+    } else if (sinceLastAI < AI_COOLDOWN_MS && lastAICallTime.current > 0) {
+      // Tapped too soon after AI — show cooldown nudge
+      showBubble("I need a moment to think... 🐱", "tap", 2000);
+      setPetState("tap-shake");
+      setTimeout(() => setPetState("idle"), 600);
+
+    } else {
+      // No API key or first tap — local reaction
+      playLocalReaction();
+    }
+  };
+
+  function playLocalReaction() {
     let idx;
     do {
       idx = Math.floor(Math.random() * TAP_REACTIONS.length);
@@ -450,30 +690,20 @@ export default function FamilyPet() {
     lastReactionIdx.current = idx;
 
     const reaction = TAP_REACTIONS[idx];
-
-    // Show bubble immediately (auto-dismiss after 2s)
     showBubble(reaction.msg, "tap", 2000);
-
-    // Play animation
     setPetState(reaction.anim);
 
-    // Flash angry red overlay briefly on angry reactions
     if (reaction.angry) {
       setAngryFlash(true);
       setTimeout(() => setAngryFlash(false), 600);
     }
 
-    // Reset to idle after animation completes
     const animDurations = {
-      "tap-spin":   600,
-      "tap-jump":   800,
-      "tap-shake":  600,
-      "tap-flip":   700,
-      "tap-shrink": 500,
-      "tap-run":   1000,
+      "tap-spin": 600, "tap-jump": 800, "tap-shake": 600,
+      "tap-flip": 700, "tap-shrink": 500, "tap-run": 1000,
     };
     setTimeout(() => setPetState("idle"), animDurations[reaction.anim] ?? 800);
-  };
+  }
 
   // ── Long press ────────────────────────────────────────────────────────────
   const handlePressStart = () => {
@@ -664,10 +894,15 @@ export default function FamilyPet() {
                 <div
                   style={{
                     background: "#1a1a2e",
-                    border: "1px solid rgba(255,255,255,0.15)",
+                    border: isAIThinking || bubble.type === "ai"
+                      ? `1px solid ${mood.color}`
+                      : "1px solid rgba(255,255,255,0.15)",
                     borderRadius: "14px",
                     padding: "10px 14px",
                     position: "relative",
+                    boxShadow: bubble.type === "ai"
+                      ? `0 0 12px ${mood.color}`
+                      : "none",
                   }}
                 >
                   <button
@@ -690,16 +925,32 @@ export default function FamilyPet() {
                       justifyContent: "center",
                     }}
                   >×</button>
-                  <p
-                    style={{
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "14px",
-                      lineHeight: "1.45",
-                      margin: 0,
-                      paddingRight: "18px",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >{bubble.text}</p>
+                  {isAIThinking ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, paddingRight: "18px" }}>
+                      {[0, 1, 2].map(i => (
+                        <motion.span
+                          key={i}
+                          style={{
+                            display: "inline-block", width: 6, height: 6,
+                            borderRadius: "50%", background: "#a78bfa",
+                          }}
+                          animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+                          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p
+                      style={{
+                        color: bubble.type === "ai" ? "rgba(255,255,255,0.97)" : "rgba(255,255,255,0.92)",
+                        fontSize: "14px",
+                        lineHeight: "1.45",
+                        margin: 0,
+                        paddingRight: "18px",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >{bubble.text}</p>
+                  )}
                 </div>
                 <div style={triangleStyle} />
               </motion.div>
@@ -717,6 +968,7 @@ export default function FamilyPet() {
             onClick={handleTap}
             style={{ cursor: "pointer", position: "relative" }}
             animate={
+              isAIThinking             ? { y: [0, -3, 0], scaleX: [1, 1.02, 1] } :
               petState === "idle"      ? { y: [0, -2, 0], scaleX: [1, 1.01, 1] } :
               petState === "happy"     ? { y: [0, -8, 0, -6, 0] } :
               petState === "sleeping"  ? { rotate: [0, 3, 0, -3, 0] } :
@@ -731,6 +983,7 @@ export default function FamilyPet() {
               {}
             }
             transition={
+              isAIThinking             ? { duration: 1.4, repeat: Infinity, ease: "easeInOut" } :
               petState === "idle"      ? { duration: 3, repeat: Infinity, ease: "easeInOut" } :
               petState === "happy"     ? { duration: 0.6, repeat: 3, ease: "easeOut" } :
               petState === "sleeping"  ? { duration: 4, repeat: Infinity, ease: "easeInOut" } :
@@ -767,6 +1020,21 @@ export default function FamilyPet() {
             {stage.id === "cat"       && <CatPet size={catSize} />}
             {stage.id === "happy_cat" && <HappyCatPet size={catSize} />}
             {stage.id === "legend"    && <LegendCatPet size={catSize} />}
+
+            {/* Mood dot — tiny colored indicator, bottom-left of pet */}
+            {ANTHROPIC_API_KEY && (
+              <motion.div
+                animate={{ scale: [1, 1.25, 1], opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  position: "absolute", bottom: 2, left: 2,
+                  width: 7, height: 7, borderRadius: "50%",
+                  background: mood.color.replace(/[\d.]+\)$/, "1)"), // full opacity for the dot itself
+                  boxShadow: `0 0 6px ${mood.color}`,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
           </motion.div>
 
           {/* Egg wobble override */}
