@@ -395,7 +395,7 @@ export default function OutdoorScene() {
             {/* Family name on mailbox */}
             <text x="336" y="355" textAnchor="middle" fontSize="4" fontWeight="700"
               fill="#94a3b8" style={{ fontFamily: "system-ui,sans-serif" }}>
-              {familyName.length > 8 ? familyName.slice(0,7)+"." : familyName}
+              {rawName.length > 8 ? rawName.slice(0,7)+"." : rawName}
             </text>
           </g>
 
@@ -523,7 +523,7 @@ export default function OutdoorScene() {
             {/* Family name on car side */}
             <text x="192" y="455" textAnchor="middle" fontSize="6" fontWeight="700"
               fill="white" opacity="0.35" style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "1px" }}>
-              {familyName.toUpperCase()}
+              {rawName.toUpperCase()}
             </text>
 
             {/* Door line */}
