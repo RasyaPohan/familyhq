@@ -56,7 +56,7 @@ export default function Layout() {
   const handleSignOut = () => {
     setActiveMember(null);
     setSidebarOpen(false);
-    navigate("/select");
+    navigate("/home");
   };
 
   const handleLeaveHQ = () => {
@@ -139,7 +139,7 @@ export default function Layout() {
         {/* Member avatar — right */}
         {member ? (
           <motion.button
-            onClick={() => navigate("/select")}
+            onClick={() => navigate("/home")}
             whileTap={{ scale: 0.85 }}
             className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
             style={{ background: memberColor.hex }}

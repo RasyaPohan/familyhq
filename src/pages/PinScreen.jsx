@@ -47,7 +47,7 @@ export default function PinScreen() {
         const code = getFamilyCode();
         setPinUnlocked(code);
         setFadeOut(true);
-        setTimeout(() => navigate('/select', { replace: true }), 500);
+        setTimeout(() => navigate('/outdoor', { replace: true }), 500);
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);

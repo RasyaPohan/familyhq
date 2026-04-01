@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import AnimatedLogo from "@/components/AnimatedLogo";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { getFamilyCode, isPinValid } from "@/lib/familyStore";
+import { getFamilyCode, isPinValid, getActiveMember } from "@/lib/familyStore";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export default function LandingPage() {
     const code = getFamilyCode();
     if (code) {
       if (isPinValid(code)) {
-        navigate('/select', { replace: true });
+        navigate('/outdoor', { replace: true });
       } else {
         navigate('/pin', { replace: true });
       }

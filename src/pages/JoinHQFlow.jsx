@@ -47,7 +47,7 @@ export default function JoinHQFlow() {
         // Correct
         setFamilySession(hqRecord.family_code, `${hqRecord.family_name}'s HQ`);
         setPinUnlocked(hqRecord.family_code);
-        navigate('/select', { replace: true });
+        navigate('/outdoor', { replace: true });
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);

@@ -77,7 +77,7 @@ export default function CreateHQFlow() {
       }, 200);
       setStep(3);
     } else if (step === 3) {
-      navigate('/select');
+      navigate('/outdoor');
     }
   };
 

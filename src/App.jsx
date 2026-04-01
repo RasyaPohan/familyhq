@@ -10,8 +10,8 @@ import Layout from './components/Layout';
 // Eagerly loaded (small, needed immediately)
 import LandingPage from './pages/LandingPage';
 import PinScreen from './pages/PinScreen';
-import FamilySelect from './pages/FamilySelect';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { Navigate } from 'react-router-dom';
 
 // Lazy loaded — split into separate chunks
 const CreateHQFlow    = lazy(() => import('./pages/CreateHQFlow'));
@@ -73,7 +73,7 @@ const AuthenticatedApp = () => {
       <Route path="/create-hq" element={<LazyPage component={CreateHQFlow} />} />
       <Route path="/join-hq" element={<LazyPage component={JoinHQFlow} />} />
       <Route path="/pin" element={<PinScreen />} />
-      <Route path="/select" element={<FamilySelect />} />
+      <Route path="/select" element={<Navigate to="/home" replace />} />
       <Route path="/outdoor" element={<LazyPage component={OutdoorScene} />} />
       <Route path="/home" element={<LazyPage component={IsometricHome} />} />
       <Route element={<Layout />}>

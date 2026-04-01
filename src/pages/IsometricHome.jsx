@@ -709,7 +709,7 @@ export default function IsometricHome() {
 
   const viewProps = {
     members, statuses, layout,
-    onRoom: setSelectedMember,
+    onRoom: handleSwitchToMember,
     onTV: () => navigate("/dashboard"),
     tvColor, tvFlash,
   };
@@ -737,7 +737,7 @@ export default function IsometricHome() {
         </div>
 
         {member ? (
-          <motion.button whileTap={{ scale: 0.85 }} onClick={() => navigate("/select")}
+          <motion.button whileTap={{ scale: 0.85 }} onClick={() => navigate("/home")}
             style={{ width: 36, height: 36, borderRadius: "50%", border: "none", flexShrink: 0,
               background: memberColor.hex, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -907,7 +907,7 @@ export default function IsometricHome() {
                 ))}
               </nav>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: 10 }}>
-                <button onClick={() => { setSidebarOpen(false); navigate("/select"); }}
+                <button onClick={() => { setSidebarOpen(false); navigate("/home"); }}
                   style={{ width: "100%", padding: "9px 14px", borderRadius: 10, border: "none",
                     background: "transparent", color: "rgba(255,255,255,0.35)", fontSize: 12,
                     cursor: "pointer", textAlign: "left" }}>Switch Member</button>
