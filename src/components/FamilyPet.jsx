@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
+import { X, Send } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveMember, getFamilyCode, getFamilyName } from "@/lib/familyStore";
 import confetti from "canvas-confetti";
@@ -327,6 +328,234 @@ function PetModal({ children, onClose }) {
   );
 }
 
+// ─── Pet Chat bottom sheet ─────────────────────────────────────────────────────
+function PetChat({ petName, petStage, onClose, onSend, messages, isTyping }) {
+  const [input, setInput] = useState("");
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
+
+  // Focus input on open
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 350);
+  }, []);
+
+  const submit = () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    onSend(text);
+  };
+
+  const PetAvatar = () => {
+    if (petStage === "egg")       return <EggPet size={40} />;
+    if (petStage === "kitten")    return <KittenPet size={40} />;
+    if (petStage === "cat")       return <CatPet size={40} />;
+    if (petStage === "happy_cat") return <HappyCatPet size={40} />;
+    return <LegendCatPet size={40} />;
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, zIndex: 99990,
+          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+        }}
+      />
+      {/* Bottom sheet */}
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 340, damping: 36 }}
+        style={{
+          position: "fixed", left: 0, right: 0, bottom: 0,
+          zIndex: 99991,
+          background: "#10101e",
+          borderTop: "1px solid rgba(139,92,246,0.25)",
+          borderRadius: "22px 22px 0 0",
+          display: "flex", flexDirection: "column",
+          height: "72vh", maxHeight: 560,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          boxShadow: "0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03) inset",
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "14px 16px 10px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          flexShrink: 0,
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(124,58,237,0.18)",
+            border: "1.5px solid rgba(139,92,246,0.4)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            overflow: "hidden",
+          }}>
+            <PetAvatar />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ color: "white", fontWeight: 700, fontSize: 15, margin: 0 }}>
+              {petName || "Your Pet"}
+            </p>
+            <p style={{ color: "rgba(167,139,250,0.7)", fontSize: 11, margin: 0 }}>
+              {isTyping ? "typing..." : "ready to chat 💬"}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 30, height: 30, borderRadius: "50%",
+              background: "rgba(255,255,255,0.07)",
+              border: "none", cursor: "pointer", color: "rgba(255,255,255,0.5)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1, overflowY: "auto", padding: "12px 14px",
+            display: "flex", flexDirection: "column", gap: 10,
+          }}
+        >
+          {messages.length === 0 && (
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 13, marginTop: 24 }}>
+              Say something to {petName || "your pet"} 👋
+            </div>
+          )}
+          {messages.map((msg, i) => (
+            <div key={i} style={{
+              display: "flex",
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+            }}>
+              {msg.role === "assistant" && (
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                  background: "rgba(124,58,237,0.2)", marginRight: 7, marginTop: 2,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 14,
+                }}>
+                  🐾
+                </div>
+              )}
+              <div style={{
+                maxWidth: "72%",
+                padding: "9px 13px",
+                borderRadius: msg.role === "user"
+                  ? "16px 4px 16px 16px"
+                  : "4px 16px 16px 16px",
+                background: msg.role === "user"
+                  ? "linear-gradient(135deg,#7c3aed,#6d28d9)"
+                  : "rgba(255,255,255,0.07)",
+                border: msg.role === "assistant"
+                  ? "1px solid rgba(139,92,246,0.2)"
+                  : "none",
+                color: "white",
+                fontSize: 14,
+                lineHeight: 1.45,
+                wordBreak: "break-word",
+              }}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: "rgba(124,58,237,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, flexShrink: 0,
+              }}>🐾</div>
+              <div style={{
+                padding: "10px 14px", borderRadius: "4px 16px 16px 16px",
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(139,92,246,0.2)",
+                display: "flex", alignItems: "center", gap: 5,
+              }}>
+                {[0, 1, 2].map(i => (
+                  <motion.span key={i}
+                    style={{
+                      display: "inline-block", width: 6, height: 6,
+                      borderRadius: "50%", background: "#a78bfa",
+                    }}
+                    animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input row */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "10px 12px 12px",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          flexShrink: 0,
+        }}>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && submit()}
+            placeholder={`Message ${petName || "your pet"}...`}
+            disabled={isTyping}
+            style={{
+              flex: 1, background: "rgba(255,255,255,0.06)",
+              border: "1.5px solid rgba(139,92,246,0.35)",
+              borderRadius: 20, padding: "10px 14px",
+              color: "white", fontSize: 14, outline: "none",
+              fontFamily: "system-ui, sans-serif",
+              transition: "border-color 0.2s",
+              opacity: isTyping ? 0.5 : 1,
+            }}
+            onFocus={e => e.target.style.borderColor = "rgba(139,92,246,0.75)"}
+            onBlur={e => e.target.style.borderColor = "rgba(139,92,246,0.35)"}
+          />
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={submit}
+            disabled={!input.trim() || isTyping}
+            style={{
+              width: 40, height: 40, borderRadius: "50%", border: "none",
+              background: input.trim() && !isTyping
+                ? "linear-gradient(135deg,#7c3aed,#6d28d9)"
+                : "rgba(255,255,255,0.07)",
+              color: input.trim() && !isTyping ? "white" : "rgba(255,255,255,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: input.trim() && !isTyping ? "pointer" : "default",
+              flexShrink: 0, transition: "all 0.2s",
+            }}
+          >
+            <Send size={16} />
+          </motion.button>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 const PET_NAME_KEY = "hq_pet_name";
@@ -367,6 +596,9 @@ export default function FamilyPet() {
     () => localStorage.getItem(PET_CORNER_KEY) || "bottom-right"
   );
   const [showLongPress, setShowLongPress] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]); // { role: "user"|"assistant", content }[]
+  const [chatTyping, setChatTyping] = useState(false);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [angryFlash, setAngryFlash] = useState(false); // red overlay on egg
   const [isAIThinking, setIsAIThinking] = useState(false);
@@ -753,6 +985,67 @@ export default function FamilyPet() {
     setTimeout(() => setPetState("idle"), animDurations[reaction.anim] ?? 800);
   }
 
+  // ── Chat send ─────────────────────────────────────────────────────────────
+  const sendChatMessage = useCallback(async (text) => {
+    // Append user message
+    const userMsg = { role: "user", content: text };
+    setChatHistory(prev => [...prev, userMsg]);
+    setChatTyping(true);
+
+    try {
+      const ctx = await gatherContext();
+      const contextBlock = [
+        `Current user: ${ctx.memberName ?? "someone"}, role: ${ctx.memberRole ?? "member"}.`,
+        `Time: ${ctx.timeStr ?? "unknown"}.`,
+        ctx.totalChores != null ? `Today's chores: ${ctx.doneToday} of ${ctx.totalChores} done.` : "",
+        ctx.nextEventStr ? `Next event: ${ctx.nextEventStr}.` : "",
+        `Family XP: ${ctx.totalXp ?? 0}.`,
+      ].filter(Boolean).join(" ");
+
+      // Build messages array: system + last 5 turns + new user message
+      const history = [...chatHistory, userMsg].slice(-5);
+      const messages = history.map(m => ({ role: m.role, content: m.content }));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      let res;
+      try {
+        res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 150,
+            system: `You are ${petName || "the family pet"}, a cute pet living inside the Yanwar family app. You are funny, warm and slightly sassy. You know everything about this family. Keep responses short — max 3 sentences. Sign off with your name. Family context: ${contextBlock}`,
+            messages,
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const reply = data.content?.[0]?.text?.trim();
+      if (!reply) throw new Error("empty");
+
+      setChatHistory(prev => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setChatHistory(prev => [...prev, {
+        role: "assistant",
+        content: "Meow... my brain is fuzzy right now. Try again in a moment! 🐾",
+      }]);
+    } finally {
+      setChatTyping(false);
+    }
+  }, [chatHistory, gatherContext, petName]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Drag & snap pointer handlers ─────────────────────────────────────────
   const handlePointerDown = useCallback((e) => {
     // Capture pointer so we get move/up even if finger leaves element
@@ -761,14 +1054,14 @@ export default function FamilyPet() {
     lastPointerPos.current = { x: e.clientX, y: e.clientY };
     isDragActive.current = false;
 
-    // Long-press (600ms) → open stats modal (only if not dragging)
+    // Long-press (300ms) → open chat (only if not dragging)
     longPressTimer.current = setTimeout(() => {
       if (!isDragActive.current) {
-        setShowLongPress(true);
         clearTimeout(bubbleTimer.current);
         setBubble(null);
+        setShowChat(true);
       }
-    }, 600);
+    }, 300);
   }, [bubbleTimer]);
 
   const handlePointerMove = useCallback((e) => {
@@ -931,6 +1224,20 @@ export default function FamilyPet() {
               </PetModal>
             </motion.div>
           </PetCenteredModal>
+        )}
+      </AnimatePresence>
+
+      {/* ── Chat bottom sheet ── */}
+      <AnimatePresence>
+        {showChat && (
+          <PetChat
+            petName={petName}
+            petStage={stage.id}
+            messages={chatHistory}
+            isTyping={chatTyping}
+            onClose={() => setShowChat(false)}
+            onSend={sendChatMessage}
+          />
         )}
       </AnimatePresence>
 
