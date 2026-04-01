@@ -25,7 +25,8 @@ export default function OutdoorScene() {
   const navigate = useNavigate();
   const member = getActiveMember();
   const familyCode = getFamilyCode();
-  const familyName = getFamilyName().replace(/\s*(HQ|Family HQ|hq)$/i, "").trim() || "Family";
+  // Strip trailing "HQ" variants but keep the rest exactly as stored
+  const rawName = getFamilyName().replace(/\s*(Family\s+)?HQ\s*$/i, "").trim() || "Family";
   const memberColor = member ? (MEMBER_COLORS[member.color] || MEMBER_COLORS.purple) : MEMBER_COLORS.purple;
 
   const [zooming, setZooming] = useState(false);
@@ -99,7 +100,7 @@ export default function OutdoorScene() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "absolute",
-          top: "7%",
+          top: "24%",
           left: 0,
           right: 0,
           zIndex: 5,
@@ -127,7 +128,7 @@ export default function OutdoorScene() {
           letterSpacing: "-0.01em",
           textShadow: "0 0 24px rgba(167,139,250,0.55), 0 0 48px rgba(139,92,246,0.3), 0 2px 8px rgba(0,0,0,0.6)",
         }}>
-          The {familyName}'s HQ
+          {rawName} HQ
         </span>
       </motion.div>
 
