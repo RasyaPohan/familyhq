@@ -390,7 +390,7 @@ export default function FamilyPet() {
         }
       }
       localStorage.setItem(PET_STAGE_KEY, newStage.id);
-    });
+    }).catch(() => { /* silent — pet just won't show XP if DB is unavailable */ });
   }, [familyCode]);
 
   // ── Show name prompt on first appearance ──────────────────────────────────
