@@ -503,20 +503,46 @@ function FrontView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash }
         );
       })()}
 
-      {/* Front door — glowing purple */}
+      {/* Front door + ENTER HQ sign above it */}
       {(() => {
         const dw = 30, dh = 44;
         const dx = CX - dw / 2, dy = HB - dh;
+        // Sign sits above door: sign bottom = dy - 6, sign height = 16
+        const sw = 58, sh = 16;
+        const sx = CX - sw / 2, sy = dy - sh - 6;
         return (
-          <g style={{ pointerEvents: "none" }}>
-            <rect x={dx - 2} y={dy - 2} width={dw + 4} height={dh + 2} rx="5"
-              fill="#7c3aed" opacity="0.15" filter="url(#ftvGlow)"/>
-            <rect x={dx} y={dy} width={dw} height={dh} rx="4"
-              fill="#08071a" stroke="#6d28d9" strokeWidth="1.2"/>
-            <path d={`M${dx},${dy + 11} Q${CX},${dy - 5} ${dx + dw},${dy + 11}`}
-              fill="none" stroke="#7c3aed" strokeWidth="0.9" opacity="0.55"/>
-            <circle cx={dx + dw - 7} cy={dy + 24} r="3" fill="#7c3aed" opacity="0.8"/>
-          </g>
+          <>
+            {/* Door (decorative) */}
+            <g style={{ pointerEvents: "none" }}>
+              <rect x={dx - 2} y={dy - 2} width={dw + 4} height={dh + 2} rx="5"
+                fill="#7c3aed" opacity="0.15" filter="url(#ftvGlow)"/>
+              <rect x={dx} y={dy} width={dw} height={dh} rx="4"
+                fill="#08071a" stroke="#6d28d9" strokeWidth="1.2"/>
+              <path d={`M${dx},${dy + 11} Q${CX},${dy - 5} ${dx + dw},${dy + 11}`}
+                fill="none" stroke="#7c3aed" strokeWidth="0.9" opacity="0.55"/>
+              <circle cx={dx + dw - 7} cy={dy + 24} r="3" fill="#7c3aed" opacity="0.8"/>
+            </g>
+            {/* ENTER HQ sign — mounted above door, clickable */}
+            <g style={{ cursor: "pointer" }} onClick={onTV}>
+              {/* Outer glow pulse */}
+              <motion.rect x={sx - 4} y={sy - 3} width={sw + 8} height={sh + 6} rx="7"
+                fill="#7c3aed"
+                animate={{ opacity: [0.10, 0.30, 0.10] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                filter="url(#ftvGlow)"
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Sign plaque */}
+              <rect x={sx} y={sy} width={sw} height={sh} rx="5"
+                fill="rgba(5,3,20,0.92)" stroke="#7c3aed" strokeWidth="1.2" strokeOpacity="0.85"/>
+              <text x={CX} y={sy + sh - 4.5} textAnchor="middle"
+                fontSize="6" fontWeight="900"
+                fill="white" opacity="0.95"
+                style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "0.8px", pointerEvents: "none" }}>
+                ✨ ENTER HQ
+              </text>
+            </g>
+          </>
         );
       })()}
 
