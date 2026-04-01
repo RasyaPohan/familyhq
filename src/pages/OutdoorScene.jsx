@@ -111,7 +111,7 @@ export default function OutdoorScene() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "absolute",
-          top: "8%",
+          top: "28%",
           left: 0,
           right: 0,
           zIndex: 5,
