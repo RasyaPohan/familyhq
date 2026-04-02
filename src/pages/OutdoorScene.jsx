@@ -528,40 +528,53 @@ export default function OutdoorScene() {
           })}
 
           {/* ══════════════════════════════════════════════════════════════
-              STREET LAMPS — flanking driveway on road
+              STREET LAMPS — far flanks of driveway, taller & bigger
           ══════════════════════════════════════════════════════════════ */}
 
-          {/* Left lamp */}
+          {/* Left lamp — far left of driveway (post at x=68) */}
           <g>
-            {/* Light cone on road */}
-            <polygon points="112,510 128,510 148,560 92,560" fill="rgba(253,230,138,0.06)" filter="url(#lampGlow)"/>
-            <polygon points="112,510 128,510 140,540 100,540" fill="rgba(253,230,138,0.05)"/>
-            {/* Post */}
-            <rect x="117" y="492" width="6" height="52" rx="3" fill="#1e293b"/>
-            <rect x="118" y="492" width="2" height="52" fill="#0f172a" opacity="0.4"/>
-            {/* Arm */}
-            <path d="M120,494 Q128,484 136,486" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-            {/* Lamp head */}
-            <rect x="128" y="481" width="16" height="9" rx="3" fill="#1e293b"/>
-            {/* Bulb */}
-            <ellipse cx="136" cy="490" rx="6" ry="5" fill="#fde68a" opacity="0.95" filter="url(#medGlow)"/>
-            {/* Halo */}
-            <ellipse cx="136" cy="490" rx="22" ry="28" fill="#fde68a" opacity="0.08" filter="url(#softGlow)"/>
-            {/* Base */}
-            <rect x="113" y="540" width="12" height="5" rx="2" fill="#1e293b"/>
+            {/* Wide light cone down onto road */}
+            <polygon points="72,500 86,500 118,580 40,580" fill="rgba(253,230,138,0.09)" filter="url(#lampGlow)"/>
+            <polygon points="72,500 86,500 106,548 52,548" fill="rgba(253,230,138,0.07)"/>
+            <polygon points="72,500 86,500 96,524 62,524" fill="rgba(253,230,138,0.05)"/>
+            {/* Post — tall, x=70, y=468 to y=544 */}
+            <rect x="68" y="468" width="8" height="76" rx="4" fill="#1e293b"/>
+            <rect x="69" y="468" width="3" height="76" fill="#0f172a" opacity="0.4"/>
+            {/* Arm curving toward driveway */}
+            <path d="M72,472 Q84,458 96,462" stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" fill="none"/>
+            {/* Lamp head housing */}
+            <rect x="85" y="456" width="22" height="12" rx="4" fill="#1e293b"/>
+            <rect x="86" y="458" width="20" height="7" rx="2" fill="#0f172a" opacity="0.5"/>
+            {/* Bulb — bigger */}
+            <ellipse cx="96" cy="468" rx="9" ry="7" fill="#fde68a" opacity="0.97" filter="url(#medGlow)"/>
+            {/* Warm halo */}
+            <ellipse cx="96" cy="468" rx="32" ry="38" fill="#fde68a" opacity="0.10" filter="url(#softGlow)"/>
+            {/* Base plate */}
+            <rect x="62" y="542" width="16" height="6" rx="3" fill="#1e293b"/>
+            <rect x="60" y="546" width="20" height="3" rx="2" fill="#151f2e"/>
           </g>
 
-          {/* Right lamp */}
+          {/* Right lamp — far right of driveway (post at x=328) */}
           <g>
-            <polygon points="272,510 288,510 308,560 252,560" fill="rgba(253,230,138,0.06)" filter="url(#lampGlow)"/>
-            <polygon points="272,510 288,510 300,540 260,540" fill="rgba(253,230,138,0.05)"/>
-            <rect x="277" y="492" width="6" height="52" rx="3" fill="#1e293b"/>
-            <rect x="278" y="492" width="2" height="52" fill="#0f172a" opacity="0.4"/>
-            <path d="M280,494 Q272,484 264,486" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-            <rect x="256" y="481" width="16" height="9" rx="3" fill="#1e293b"/>
-            <ellipse cx="264" cy="490" rx="6" ry="5" fill="#fde68a" opacity="0.95" filter="url(#medGlow)"/>
-            <ellipse cx="264" cy="490" rx="22" ry="28" fill="#fde68a" opacity="0.08" filter="url(#softGlow)"/>
-            <rect x="275" y="540" width="12" height="5" rx="2" fill="#1e293b"/>
+            {/* Wide light cone down onto road */}
+            <polygon points="314,500 328,500 360,580 282,580" fill="rgba(253,230,138,0.09)" filter="url(#lampGlow)"/>
+            <polygon points="314,500 328,500 348,548 294,548" fill="rgba(253,230,138,0.07)"/>
+            <polygon points="314,500 328,500 338,524 304,524" fill="rgba(253,230,138,0.05)"/>
+            {/* Post */}
+            <rect x="324" y="468" width="8" height="76" rx="4" fill="#1e293b"/>
+            <rect x="325" y="468" width="3" height="76" fill="#0f172a" opacity="0.4"/>
+            {/* Arm curving toward driveway */}
+            <path d="M328,472 Q316,458 304,462" stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" fill="none"/>
+            {/* Lamp head housing */}
+            <rect x="293" y="456" width="22" height="12" rx="4" fill="#1e293b"/>
+            <rect x="294" y="458" width="20" height="7" rx="2" fill="#0f172a" opacity="0.5"/>
+            {/* Bulb */}
+            <ellipse cx="304" cy="468" rx="9" ry="7" fill="#fde68a" opacity="0.97" filter="url(#medGlow)"/>
+            {/* Warm halo */}
+            <ellipse cx="304" cy="468" rx="32" ry="38" fill="#fde68a" opacity="0.10" filter="url(#softGlow)"/>
+            {/* Base plate */}
+            <rect x="322" y="542" width="16" height="6" rx="3" fill="#1e293b"/>
+            <rect x="320" y="546" width="20" height="3" rx="2" fill="#151f2e"/>
           </g>
 
           {/* ══════════════════════════════════════════════════════════════
@@ -669,13 +682,13 @@ export default function OutdoorScene() {
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Subtle glow behind text */}
-            <ellipse cx="200" cy="114" rx="120" ry="38" fill="rgba(88,28,235,0.08)" filter="url(#softGlow)"/>
-            <text x="200" y="100" textAnchor="middle" fontSize="11" fontWeight="400"
+            <ellipse cx="200" cy="72" rx="120" ry="38" fill="rgba(88,28,235,0.08)" filter="url(#softGlow)"/>
+            <text x="200" y="58" textAnchor="middle" fontSize="11" fontWeight="400"
               fill="rgba(196,181,253,0.65)"
               style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "3.5px" }}>
               WELCOME TO
             </text>
-            <text x="200" y="140" textAnchor="middle" fontSize="38" fontWeight="700"
+            <text x="200" y="98" textAnchor="middle" fontSize="38" fontWeight="700"
               fill="rgba(255,255,255,0.97)"
               style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "-1px" }}>
               {rawName} HQ
