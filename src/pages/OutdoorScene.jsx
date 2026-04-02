@@ -106,10 +106,7 @@ export default function OutdoorScene() {
 
       {/* ── Single zoom container: ALL scene elements zoom together ── */}
       <motion.div
-        style={{
-          position: "absolute", inset: 0, transformOrigin: "50% 52%",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
+        style={{ position: "absolute", inset: 0, transformOrigin: "50% 52%" }}
         animate={zooming ? { scale: 4, opacity: 0 } : { scale: 1, opacity: 1 }}
         transition={zooming
           ? { duration: 1.0, ease: [0.4, 0, 0.8, 1] }
@@ -126,14 +123,8 @@ export default function OutdoorScene() {
         */}
         <svg
           viewBox="0 0 400 600"
-          style={{
-            display: "block",
-            width: "100%",
-            height: "100%",
-            maxWidth: "520px",   /* desktop: cap width so scene isn't enormous */
-            maxHeight: "100vh",
-          }}
-          preserveAspectRatio="xMidYMid meet"
+          style={{ display: "block", position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}
+          preserveAspectRatio="xMidYMax meet"
         >
           <defs>
             {/* Window glow filter */}
@@ -186,25 +177,19 @@ export default function OutdoorScene() {
             </radialGradient>
           </defs>
 
-          {/* ── Background fill ── */}
-          <rect x="0" y="0" width="400" height="600" fill="transparent"/>
-
-          {/* ── Welcome text in sky (y=0–130, rooftop at y=230) ── */}
+          {/* ── Welcome text in sky ── */}
           <motion.g
             style={{ pointerEvents: "none" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: zooming ? 0 : 1 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Glow behind text */}
-            <ellipse cx="200" cy="72" rx="110" ry="38"
-              fill="rgba(109,40,217,0.13)" filter="url(#winGlow)"/>
-            <text x="200" y="60" textAnchor="middle" fontSize="12" fontWeight="400"
-              fill="rgba(196,181,253,0.75)"
+            <text x="200" y="55" textAnchor="middle" fontSize="12" fontWeight="400"
+              fill="rgba(196,181,253,0.70)"
               style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "2px" }}>
               WELCOME TO
             </text>
-            <text x="200" y="95" textAnchor="middle" fontSize="30" fontWeight="700"
+            <text x="200" y="92" textAnchor="middle" fontSize="30" fontWeight="700"
               fill="rgba(255,255,255,0.97)"
               style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "-0.5px" }}>
               {rawName} HQ
@@ -224,15 +209,15 @@ export default function OutdoorScene() {
               fill="#fde68a" opacity={0.4 + (i % 3) * 0.15}/>
           ))}
 
-          {/* ── Ground / lawn (shifted +80) ── */}
-          <rect x="0" y="450" width="400" height="150" fill="url(#grassGrad)"/>
+          {/* ── Ground / lawn — extends wide to fill letterbox ── */}
+          <rect x="-400" y="450" width="1200" height="150" fill="url(#grassGrad)"/>
           {Array.from({length:10},(_,i)=>(
             <rect key={i} x={i*40} y="450" width="20" height="150" fill="#052e16" opacity="0.12"/>
           ))}
 
-          {/* ── Sidewalk / street (shifted +80) ── */}
-          <rect x="0" y="556" width="400" height="44" fill="#1e2130"/>
-          <rect x="0" y="556" width="400" height="2" fill="#2d3354" opacity="0.8"/>
+          {/* ── Sidewalk / street — flush at bottom, extends wide ── */}
+          <rect x="-400" y="556" width="1200" height="60" fill="#1e2130"/>
+          <rect x="-400" y="556" width="1200" height="2" fill="#2d3354" opacity="0.8"/>
           {Array.from({length:8},(_,i)=>(
             <rect key={i} x={16+i*52} y="574" width="32" height="4" rx="2" fill="#f59e0b" opacity="0.25"/>
           ))}
@@ -487,12 +472,6 @@ export default function OutdoorScene() {
             <line x1="192" y1="521" x2="192" y2="542" stroke="white" strokeWidth="0.5" opacity="0.15"/>
             <rect x="178" y="529" width="8" height="3" rx="1.5" fill="#e2e8f0" opacity="0.3"/>
             <rect x="200" y="529" width="8" height="3" rx="1.5" fill="#e2e8f0" opacity="0.3"/>
-            <rect x="165" y="498" width="54" height="2" rx="1" fill={carColor} opacity="0.4"/>
-            {/* Family name on car side */}
-            <text x="192" y="533" textAnchor="middle" fontSize="5.5" fontWeight="600"
-              fill="rgba(255,255,255,0.35)" style={{ fontFamily: "system-ui,sans-serif" }}>
-              {rawName}
-            </text>
           </g>
 
           {/* ── Lamp post (shifted +80) ── */}
