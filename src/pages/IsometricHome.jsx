@@ -637,9 +637,51 @@ function TopDownView({ members, statuses, layout, onRoom, onTV, tvColor, tvFlash
         const col = getSlotColor(slot, members);
         const isHov = hov === slot.slotIndex;
         const isTV = slot.type === "tv";
+        const isDoor = slot.type === "door";
         const isShared = slot.type === "shared";
         const { ax, ay, mx, my, pw, ph } = slotRect(slot);
         const st = m ? (STATUS_CONFIG[statuses[m.id]] || STATUS_CONFIG.home) : null;
+
+        // ── Door cell in top-down view: archway + Enter HQ sign ──────────────
+        if (isDoor) {
+          const archW = Math.min(40, pw * 0.55);
+          const archH = Math.min(52, ph * 0.65);
+          const archX = mx - archW / 2;
+          const archY = my - archH / 2 + 4;
+          const archRad = archW / 2;
+          return (
+            <g key={slot.slotIndex} style={{ cursor: "pointer" }} onClick={onTV}>
+              {/* Transparent tile — no background */}
+              <rect x={ax + 4} y={ay + 4} width={pw} height={ph} rx="10"
+                fill="transparent" stroke="#4c1d95" strokeWidth="1.5" strokeOpacity="0.4"
+                strokeDasharray="4 3"/>
+              {/* Glow behind arch */}
+              <motion.rect x={archX - 6} y={archY - 6} width={archW + 12} height={archH + 12} rx="8"
+                fill="#7c3aed"
+                animate={{ opacity: [0.06, 0.22, 0.06] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                filter="url(#tdtvGlow)" style={{ pointerEvents: "none" }}/>
+              {/* Arch surround */}
+              <rect x={archX - 3} y={archY} width={archW + 6} height={archH + 3} rx="3"
+                fill="#0a0818" stroke="#4c1d95" strokeWidth="1.2" opacity="0.9"
+                style={{ pointerEvents: "none" }}/>
+              {/* Arch opening */}
+              <path d={`M${archX},${archY + archRad} A${archRad},${archRad} 0 0,1 ${archX + archW},${archY + archRad} L${archX + archW},${archY + archH} L${archX},${archY + archH} Z`}
+                fill="#030209" style={{ pointerEvents: "none" }}/>
+              {/* Purple glow from inside */}
+              <path d={`M${archX},${archY + archRad} A${archRad},${archRad} 0 0,1 ${archX + archW},${archY + archRad} L${archX + archW},${archY + archH} L${archX},${archY + archH} Z`}
+                fill="#7c3aed" opacity="0.12" filter="url(#tdtvGlow)" style={{ pointerEvents: "none" }}/>
+              {/* "ENTER HQ" label below arch */}
+              <text x={mx} y={archY + archH + 13} textAnchor="middle"
+                fontSize={Math.max(7, Math.floor(U / 14))} fontWeight="900"
+                fill="white" opacity="0.75" style={{ fontFamily: "system-ui,sans-serif", letterSpacing: "0.8px", pointerEvents: "none" }}>
+                ✨ ENTER HQ
+              </text>
+              {/* Hit area */}
+              <rect x={ax + 4} y={ay + 4} width={pw} height={ph} rx="10" fill="transparent" stroke="transparent"/>
+            </g>
+          );
+        }
 
         return (
           <g key={slot.slotIndex}>

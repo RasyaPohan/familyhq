@@ -111,7 +111,7 @@ export default function OutdoorScene() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "absolute",
-          top: "28%",
+          top: "10%",
           left: 0,
           right: 0,
           zIndex: 5,
@@ -132,7 +132,7 @@ export default function OutdoorScene() {
           Welcome to
         </span>
         <span style={{
-          fontSize: 28,
+          fontSize: 34,
           fontWeight: 700,
           color: "rgba(255,255,255,0.96)",
           fontFamily: "system-ui, sans-serif",
