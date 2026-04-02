@@ -55,7 +55,7 @@ export default function OutdoorScene() {
     if (zooming) return;
     setDoorGlow(true);
     setZooming(true);
-    setTimeout(() => navigate("/home"), 1100);
+    // Navigation happens in onAnimationComplete — no setTimeout needed
   };
 
   const carColor = memberColor.hex;
@@ -104,46 +104,7 @@ export default function OutdoorScene() {
         </div>
       </div>
 
-      {/* ── Welcome text ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        style={{
-          position: "absolute",
-          top: "10%",
-          left: 0,
-          right: 0,
-          zIndex: 5,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          pointerEvents: "none",
-          gap: 4,
-        }}
-      >
-        <span style={{
-          fontSize: 14,
-          fontWeight: 400,
-          color: "rgba(196,181,253,0.7)",
-          fontFamily: "system-ui, sans-serif",
-          letterSpacing: "0.06em",
-        }}>
-          Welcome to
-        </span>
-        <span style={{
-          fontSize: 34,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.96)",
-          fontFamily: "system-ui, sans-serif",
-          letterSpacing: "-0.01em",
-          textShadow: "0 0 24px rgba(167,139,250,0.55), 0 0 48px rgba(139,92,246,0.3), 0 2px 8px rgba(0,0,0,0.6)",
-        }}>
-          {rawName} HQ
-        </span>
-      </motion.div>
-
-      {/* ── Main zoom container ── */}
+      {/* ── Single zoom container: ALL scene elements zoom together ── */}
       <motion.div
         style={{ position: "absolute", inset: 0, transformOrigin: "50% 46%" }}
         animate={zooming ? { scale: 4, opacity: 0 } : { scale: 1, opacity: 1 }}
@@ -151,7 +112,47 @@ export default function OutdoorScene() {
           ? { duration: 1.0, ease: [0.4, 0, 0.8, 1] }
           : { duration: 0 }
         }
+        onAnimationComplete={() => { if (zooming) navigate("/home"); }}
       >
+        {/* ── Welcome text ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -14 }}
+          animate={{ opacity: zooming ? 0 : 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            position: "absolute",
+            top: "10%",
+            left: 0,
+            right: 0,
+            zIndex: 5,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            pointerEvents: "none",
+            gap: 4,
+          }}
+        >
+          <span style={{
+            fontSize: 14,
+            fontWeight: 400,
+            color: "rgba(196,181,253,0.7)",
+            fontFamily: "system-ui, sans-serif",
+            letterSpacing: "0.06em",
+          }}>
+            Welcome to
+          </span>
+          <span style={{
+            fontSize: 34,
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.96)",
+            fontFamily: "system-ui, sans-serif",
+            letterSpacing: "-0.01em",
+            textShadow: "0 0 24px rgba(167,139,250,0.55), 0 0 48px rgba(139,92,246,0.3), 0 2px 8px rgba(0,0,0,0.6)",
+          }}>
+            {rawName} HQ
+          </span>
+        </motion.div>
+
         <svg
           viewBox="0 0 400 520"
           width="100%"
@@ -469,9 +470,11 @@ export default function OutdoorScene() {
             </g>
           ))}
 
-          {/* ── Pet egg on lawn (right of driveway) ── */}
-          <g
-            style={{ cursor: "pointer" }}
+          {/* ── Pet egg in left garden — bigger, nestled in grass ── */}
+          <motion.g
+            style={{ cursor: "pointer", transformBox: "fill-box", transformOrigin: "50% 100%" }}
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
             onClick={e => {
               e.stopPropagation();
               clearTimeout(petBubbleTimer.current);
@@ -479,19 +482,34 @@ export default function OutdoorScene() {
               petBubbleTimer.current = setTimeout(() => setPetBubble(false), 2500);
             }}
           >
+            {/* Grass blades behind egg */}
+            <line x1="50" y1="375" x2="46" y2="358" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" opacity="0.9"/>
+            <line x1="57" y1="374" x2="55" y2="360" stroke="#166534" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+            <line x1="82" y1="375" x2="86" y2="359" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" opacity="0.9"/>
+            <line x1="76" y1="374" x2="78" y2="361" stroke="#166534" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+            {/* Glow beneath egg */}
+            <ellipse cx="68" cy="374" rx="18" ry="5" fill="rgba(139,92,246,0.18)" filter="url(#winGlow)"/>
             {/* Shadow */}
-            <ellipse cx="278" cy="376" rx="9" ry="3" fill="rgba(0,0,0,0.35)"/>
-            {/* Egg body */}
-            <ellipse cx="278" cy="366" rx="9" ry="11" fill="#fef3c7" stroke="#fcd34d" strokeWidth="1"/>
+            <ellipse cx="68" cy="376" rx="16" ry="4.5" fill="rgba(0,0,0,0.4)"/>
+            {/* Egg body — large */}
+            <ellipse cx="68" cy="357" rx="16" ry="19" fill="#fef3c7" stroke="#fcd34d" strokeWidth="1.5"/>
+            {/* Egg shine */}
+            <ellipse cx="62" cy="348" rx="5" ry="7" fill="white" opacity="0.22"/>
             {/* Egg crack */}
-            <path d="M275,358 L277,362 L275,365" stroke="#fbbf24" strokeWidth="0.8" strokeLinecap="round" fill="none"/>
-            <path d="M281,357 L280,360" stroke="#fbbf24" strokeWidth="0.8" strokeLinecap="round" fill="none"/>
+            <path d="M64,343 L67,349 L63,354" stroke="#fbbf24" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+            <path d="M72,342 L71,347" stroke="#fbbf24" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
             {/* Eyes peeking */}
-            <circle cx="275" cy="365" r="1.2" fill="#1e1b4b"/>
-            <circle cx="281" cy="365" r="1.2" fill="#1e1b4b"/>
-            <circle cx="275.4" cy="364.6" r="0.4" fill="white"/>
-            <circle cx="281.4" cy="364.6" r="0.4" fill="white"/>
-          </g>
+            <circle cx="62" cy="355" r="2.2" fill="#1e1b4b"/>
+            <circle cx="74" cy="355" r="2.2" fill="#1e1b4b"/>
+            <circle cx="62.7" cy="354.2" r="0.8" fill="white"/>
+            <circle cx="74.7" cy="354.2" r="0.8" fill="white"/>
+            {/* Cheek blush */}
+            <ellipse cx="58" cy="358" rx="3" ry="2" fill="#fca5a5" opacity="0.5"/>
+            <ellipse cx="78" cy="358" rx="3" ry="2" fill="#fca5a5" opacity="0.5"/>
+            {/* Grass blades in front of egg */}
+            <line x1="52" y1="378" x2="49" y2="365" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" opacity="0.85"/>
+            <line x1="84" y1="378" x2="87" y2="365" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" opacity="0.85"/>
+          </motion.g>
 
           {/* ── FAMILY CAR ── */}
           <g>
@@ -626,102 +644,89 @@ export default function OutdoorScene() {
             }}
           />
         ))}
-      </motion.div>
 
-      {/* ── Pet speech bubble ── */}
-      <AnimatePresence>
-        {petBubble && (
-          <motion.div
-            key="petbubble"
-            initial={{ opacity: 0, y: 6, scale: 0.88 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.88 }}
-            transition={{ type: "spring", stiffness: 420, damping: 28 }}
-            style={{
-              position: "absolute",
-              // Pet is at ~70% from left, ~72% from top in the SVG (x=278/400, y=355/520)
-              left: "calc(70% - 80px)",
-              top: "calc(72% - 52px)",
-              zIndex: 6,
-              pointerEvents: "none",
-            }}
-          >
-            <div style={{
-              background: "#1a1a2e",
-              border: "1px solid rgba(167,139,250,0.45)",
-              borderRadius: 12,
-              padding: "8px 12px",
-              color: "rgba(255,255,255,0.92)",
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: "system-ui, sans-serif",
-              whiteSpace: "nowrap",
-              boxShadow: "0 0 12px rgba(139,92,246,0.25)",
-            }}>
-              {petGreeting.current}
-            </div>
-            {/* Triangle pointer down-left toward pet */}
-            <div style={{
-              position: "absolute", bottom: -7, left: 18,
-              width: 0, height: 0,
-              borderLeft: "7px solid transparent",
-              borderRight: "7px solid transparent",
-              borderTop: "7px solid #1a1a2e",
-            }}/>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Tap hint ── */}
-      <AnimatePresence>
-        {hintVisible && !zooming && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{
-              position: "fixed", bottom: 32, left: 0, right: 0,
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-              pointerEvents: "none", zIndex: 10,
-            }}
-          >
-            {/* Pulsing door icon */}
+        {/* ── Pet speech bubble ── */}
+        <AnimatePresence>
+          {petBubble && (
             <motion.div
-              animate={{ scale: [1, 1.12, 1] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-              style={{ fontSize: 22 }}
-            >🚪</motion.div>
-            <div style={{
-              background: "rgba(255,255,255,0.07)",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 999,
-              padding: "7px 20px",
-              color: "rgba(255,255,255,0.6)",
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: "system-ui, sans-serif",
-              letterSpacing: "0.02em",
-            }}>
-              Tap anywhere to enter
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              key="petbubble"
+              initial={{ opacity: 0, y: 6, scale: 0.88 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.88 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28 }}
+              style={{
+                position: "absolute",
+                // Pet is in left garden ~x=68/400=17%, y=355/520=68%
+                left: "calc(17% + 8px)",
+                top: "calc(68% - 60px)",
+                zIndex: 6,
+                pointerEvents: "none",
+              }}
+            >
+              <div style={{
+                background: "#1a1a2e",
+                border: "1px solid rgba(167,139,250,0.45)",
+                borderRadius: 12,
+                padding: "8px 12px",
+                color: "rgba(255,255,255,0.92)",
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "system-ui, sans-serif",
+                whiteSpace: "nowrap",
+                boxShadow: "0 0 12px rgba(139,92,246,0.25)",
+              }}>
+                {petGreeting.current}
+              </div>
+              {/* Triangle pointer down toward pet */}
+              <div style={{
+                position: "absolute", bottom: -7, left: 18,
+                width: 0, height: 0,
+                borderLeft: "7px solid transparent",
+                borderRight: "7px solid transparent",
+                borderTop: "7px solid #1a1a2e",
+              }}/>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* ── Flash-white on zoom ── */}
-      <AnimatePresence>
-        {zooming && (
-          <motion.div
-            key="flash"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.35, 0] }}
-            transition={{ duration: 0.9, ease: "easeInOut" }}
-            style={{ position: "fixed", inset: 0, background: "white", pointerEvents: "none", zIndex: 5 }}
-          />
-        )}
-      </AnimatePresence>
+        {/* ── Tap hint ── */}
+        <AnimatePresence>
+          {hintVisible && !zooming && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              style={{
+                position: "absolute", bottom: 32, left: 0, right: 0,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                pointerEvents: "none", zIndex: 10,
+              }}
+            >
+              <motion.div
+                animate={{ scale: [1, 1.12, 1] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                style={{ fontSize: 22 }}
+              >🚪</motion.div>
+              <div style={{
+                background: "rgba(255,255,255,0.07)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 999,
+                padding: "7px 20px",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "system-ui, sans-serif",
+                letterSpacing: "0.02em",
+              }}>
+                Tap anywhere to enter
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+      </motion.div>
     </div>
   );
 }

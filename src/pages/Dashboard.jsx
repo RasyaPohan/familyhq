@@ -103,7 +103,7 @@ export default function Dashboard() {
 
       <div
         className="fixed left-4 z-[39]"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+        style={{ bottom: "24px" }}
       >
         <AnimatePresence>
           {showQuick && (

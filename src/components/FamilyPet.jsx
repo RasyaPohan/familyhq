@@ -29,7 +29,7 @@ function getStage(totalXp) {
 // EDGE_PAD: distance from screen edges; BOTTOM_PAD: keeps pet above nav bar.
 // Bottom-left is excluded (reserved for nav / layout elements).
 const EDGE_PAD = 16;
-const BOTTOM_PAD = 72;
+const BOTTOM_PAD = 24;
 
 // Returns the pixel {x, y} of each allowed corner's top-left origin
 // given current viewport dimensions and pet size.
